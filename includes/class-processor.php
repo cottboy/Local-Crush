@@ -190,6 +190,8 @@ class Local_Crush_Processor {
             'total_ratio'          => 0,
         );
 
+        $counted_paths = array(); // 共用文件的字节只计一次，否则合计虚高
+
         foreach ( $files as $file ) {
             // 元数据声明但磁盘上已不存在的尺寸不是待处理项：重试多少次都不会变，
             // 计入 pending 会让整个附件永远显示"待压缩"并被反复重试。
@@ -207,8 +209,18 @@ class Local_Crush_Processor {
 
             if ( $complete ) {
                 $state['success_count']++;
+
                 // 与媒体详情页同一口径：附件包含的所有文件都参与比例，旧兼容格式回退文件也一起算，
                 // 节省合计 ÷ 压缩前合计。原图备份不是被压缩的对象，不进这项统计。
+                // 宽高相同的两个尺寸共用同一份文件时字节只按一份计。
+                $path_key = $this->normalized_path( (string) $file['file_path'] );
+
+                if ( isset( $counted_paths[ $path_key ] ) ) {
+                    continue;
+                }
+
+                $counted_paths[ $path_key ] = true;
+
                 $original_size = max( 0, (int) $record['original_size'] );
 
                 if ( 0 === $original_size ) {
@@ -569,12 +581,38 @@ class Local_Crush_Processor {
                 'details'     => array(),
             );
 
+            $handled = array(); // 本轮已成功处理的文件：路径 => 结果与记录键，供共用尺寸复制
+
             foreach ( $pending as $file ) {
                 do_action( 'local_crush_before_compress', $attachment_id, $file['file_path'], $file['size_type'] );
 
-                if ( empty( $file['is_fallback'] )
+                $path_key     = $this->normalized_path( (string) $file['file_path'] );
+                $will_convert = empty( $file['is_fallback'] )
                     && $allow_target_conversion
-                    && local_crush()->output_processor->should_output_target( $file['file_path'] ) ) {
+                    && local_crush()->output_processor->should_output_target( $file['file_path'] );
+
+                if ( isset( $handled[ $path_key ] ) ) {
+                    // 宽高相同的两个尺寸（如 large 与 medium_large）共用同一份文件：
+                    // 干活按文件只干一次，第二个尺寸复制第一份结果，不对同一张
+                    // 文件重复压缩或编码；名册里每个尺寸仍各有一份完整记录。
+                    $file_result = $this->replicate_handled_result( $attachment_id, $file, $handled[ $path_key ] );
+
+                    if ( null === $file_result ) {
+                        // 复制前提不成立（映射或记录对不上），按独立文件正常处理。
+                        $file_result = $will_convert
+                            ? local_crush()->output_processor->compress_to_target_format(
+                                $attachment_id,
+                                $file['file_path'],
+                                $file['size_type'],
+                                $target
+                            )
+                            : local_crush()->compressor->compress_file(
+                                $attachment_id,
+                                $file['file_path'],
+                                $file['size_type']
+                            );
+                    }
+                } elseif ( $will_convert ) {
                     $file_result = local_crush()->output_processor->compress_to_target_format(
                         $attachment_id,
                         $file['file_path'],
@@ -593,6 +631,13 @@ class Local_Crush_Processor {
                 $result['details'][]      = array_merge( $file, $file_result );
 
                 if ( 'success' === $file_result['status'] ) {
+                    if ( ! isset( $handled[ $path_key ] ) ) {
+                        $handled[ $path_key ] = array(
+                            'result'           => $file_result,
+                            'record_size_type' => isset( $file['record_size_type'] ) ? (string) $file['record_size_type'] : (string) $file['size_type'],
+                        );
+                    }
+
                     $result['success']++;
                     $result['saved_bytes'] += max(
                         0,
@@ -692,6 +737,85 @@ class Local_Crush_Processor {
         }
 
         return $pending;
+    }
+
+    /**
+     * 把本轮已处理完的文件结果复制到共用它的另一个尺寸名下
+     *
+     * 宽高相同的两个尺寸（如 large 与 medium_large）共用同一份文件：干活按
+     * 文件只干一次，第二份记录是第一份的复制品——这样名册里每个尺寸仍各有
+     * 一份完整记录，状态、明细与删除清理都按既有口径工作。
+     *
+     * 转换结果通过转换器的共用逻辑认领（映射、记录与回退记录一并补齐）；
+     * 同格式压缩结果只复制压缩记录。前提对不上时返回 null，交回调用方把
+     * 该尺寸当独立文件正常处理。
+     *
+     * @param int   $attachment_id 附件 ID
+     * @param array $file          待处理条目（含 size_type 与 record_size_type）
+     * @param array $handled       已成功处理的结果与记录键
+     * @return array|null 复制出的处理结果
+     */
+    private function replicate_handled_result( int $attachment_id, array $file, array $handled ): ?array {
+        $result     = $handled['result'];
+        $from_type  = (string) $handled['record_size_type'];
+        $to_type    = isset( $file['record_size_type'] ) ? (string) $file['record_size_type'] : (string) $file['size_type'];
+        $size_type  = (string) $file['size_type'];
+
+        if ( '' === $from_type || '' === $to_type || $from_type === $to_type ) {
+            return null;
+        }
+
+        $owner_record = local_crush()->database->get_record( $attachment_id, $from_type );
+
+        if ( ! is_array( $owner_record ) || 'success' !== (string) $owner_record['status'] ) {
+            return null;
+        }
+
+        if ( ! empty( $result['to'] ) ) {
+            return local_crush()->output_processor->adopt_shared_output(
+                $attachment_id,
+                (string) $file['file_path'],
+                $size_type,
+                (string) $result['to'],
+                max( 0, (int) $owner_record['original_size'] ),
+                (string) ( isset( $result['tool_name'] ) ? $result['tool_name'] : '' )
+            );
+        }
+
+        // 同格式压缩结果：只把压缩记录复制到本尺寸名下。
+        if ( ! local_crush()->compressor->save_compression_record(
+            $attachment_id,
+            (string) $owner_record['file_path'],
+            $to_type,
+            max( 0, (int) $owner_record['original_size'] ),
+            max( 0, (int) $owner_record['compressed_size'] ),
+            (string) ( isset( $owner_record['tool_name'] ) ? $owner_record['tool_name'] : '' ),
+            'success',
+            ''
+        ) ) {
+            return array(
+                'file_path'       => (string) $file['file_path'],
+                'from'            => (string) $file['file_path'],
+                'to'              => '',
+                'status'          => 'failed',
+                'message'         => __( '压缩记录保存失败，请重新压缩', 'local-crush' ),
+                'original_size'   => max( 0, (int) $owner_record['compressed_size'] ),
+                'compressed_size' => 0,
+            );
+        }
+
+        return array(
+            'file_path'       => (string) $file['file_path'],
+            'from'            => (string) $file['file_path'],
+            'to'              => '',
+            'size_type'       => $size_type,
+            'status'          => 'success',
+            'message'         => __( '该尺寸与另一尺寸共用同一份压缩结果，未重复处理', 'local-crush' ),
+            // 没有新工作发生，本次运行不重复计入节省字节数。
+            'original_size'   => max( 0, (int) $owner_record['compressed_size'] ),
+            'compressed_size' => max( 0, (int) $owner_record['compressed_size'] ),
+            'tool_name'       => (string) ( isset( $owner_record['tool_name'] ) ? $owner_record['tool_name'] : '' ),
+        );
     }
 
     /**

@@ -434,7 +434,10 @@ class Local_Crush_Output {
 
             // 复用了旧映射的目标名时，上一轮的转换结果文件会变成无人引用的孤儿：
             // 映射刚被删掉，它既不会被下次重跑覆盖，也不会被恢复流程删除。
-            if ( $entry && file_exists( $target_path ) && $this->is_safe_path( $target_path ) ) {
+            // 但宽高相同的两个尺寸可能共用这份结果：还有别的映射或元数据条目
+            // 指着它时绝不能删，否则另一尺寸的图会短暂 404。
+            if ( $entry && file_exists( $target_path ) && $this->is_safe_path( $target_path )
+                && ! $this->target_referenced_elsewhere( $attachment_id, $target_path, $size_type ) ) {
                 // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
                 unlink( $target_path );
             }
@@ -646,6 +649,26 @@ class Local_Crush_Output {
             'compressed_size' => $compressed_size,
             'tool_name'       => $tool_name,
         );
+    }
+
+    /**
+     * 把另一尺寸已生成的转换结果认领到本尺寸名下
+     *
+     * 压缩主循环按文件去重后，共用文件的第二个尺寸不再自己走一遍转换流程，
+     * 由调用方拿着第一份结果调这里补齐名册（映射、压缩记录与回退记录）。
+     * 前提校验与共用逻辑一致：目标路径确实是本附件按同一源文件转出的结果，
+     * 对不上时返回 null 交回调用方按独立文件处理。
+     *
+     * @param int    $attachment_id 附件 ID
+     * @param string $file_path     源文件绝对路径
+     * @param string $size_type     认领方的尺寸类型
+     * @param string $target_path   已生成的转换结果路径
+     * @param int    $original_size 源文件大小
+     * @param string $tool_name     目标格式工具名
+     * @return array|null 认领成功时返回转换结果
+     */
+    public function adopt_shared_output( int $attachment_id, string $file_path, string $size_type, string $target_path, int $original_size, string $tool_name ): ?array {
+        return $this->share_existing_output( $attachment_id, $file_path, $size_type, $target_path, $original_size, $tool_name );
     }
 
     /**
@@ -1512,6 +1535,46 @@ class Local_Crush_Output {
     }
 
     /**
+     * 转换结果是否还被本附件的其他尺寸引用
+     *
+     * 宽高相同的两个尺寸（如 large 与 medium_large）可能共用同一份转换结果：
+     * 检查其他映射条目与元数据里的缩略图条目，只要还有一处指着它就不能删，
+     * 否则那个尺寸的新格式图会失去文件。
+     *
+     * @param int    $attachment_id 附件 ID
+     * @param string $target_path   转换结果路径
+     * @param string $size_type     当前处理的尺寸类型（不算它自己）
+     * @return bool
+     */
+    private function target_referenced_elsewhere( int $attachment_id, string $target_path, string $size_type ): bool {
+        $candidate   = $this->normalized_path( $target_path );
+        $target_name = wp_basename( $target_path );
+
+        foreach ( $this->get_output_entries( $attachment_id ) as $other ) {
+            if ( (string) $other['size_type'] === $size_type ) {
+                continue;
+            }
+
+            if ( $this->normalized_path( (string) $other['to'] ) === $candidate ) {
+                return true;
+            }
+        }
+
+        $metadata = wp_get_attachment_metadata( $attachment_id );
+
+        if ( is_array( $metadata ) && ! empty( $metadata['sizes'] ) && is_array( $metadata['sizes'] ) ) {
+            foreach ( $metadata['sizes'] as $size_data ) {
+                if ( is_array( $size_data ) && ! empty( $size_data['file'] )
+                    && $this->normalized_path( (string) $size_data['file'] ) === $this->normalized_path( $target_name ) ) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * 丢弃指向旧命名规则的转换映射，按新规则从头再来
      *
      * 映射的 to 与新规则算出的目标名不一致，说明它是旧方案留下的。要真的"重新开始"，
@@ -1877,6 +1940,24 @@ class Local_Crush_Output {
         global $wpdb;
 
         $replaced = 0;
+
+        // 同一对地址可能出现多次（共用文件的尺寸各记一条映射）：先去重，
+        // 否则替换本身幂等无碍，“替换了 N 处”的计数会按重复对翻倍。
+        $unique_pairs = array();
+        $unique_keys  = array();
+
+        foreach ( $replacements as $replacement ) {
+            $key = $this->normalized_path( (string) $replacement['from'] ) . '|' . $this->normalized_path( (string) $replacement['to'] );
+
+            if ( isset( $unique_keys[ $key ] ) ) {
+                continue;
+            }
+
+            $unique_keys[ $key ] = true;
+            $unique_pairs[]      = $replacement;
+        }
+
+        $replacements = $unique_pairs;
 
         if ( empty( $replacements ) ) {
             return true;
