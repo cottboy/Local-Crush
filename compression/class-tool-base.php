@@ -177,82 +177,242 @@ abstract class Local_Crush_Tool_Base {
     /**
      * 获取可执行文件路径
      *
-     * 优先查找 wp-content/local-crush-bin 目录，然后查找系统 PATH
-     *
      * @return string|false 可执行文件路径或 false
      */
-    protected function get_executable_path() {        // 使用缓存
+    protected function get_executable_path() {
         if ( null !== $this->executable_path ) {
             return $this->executable_path;
         }
 
-        $executable_name = $this->get_executable_name();
+        $this->executable_path = self::resolve_executable( $this->get_executable_name() );
 
-        // 1. 首先检查 wp-content/local-crush-bin 目录
-        $bin_path = LOCAL_CRUSH_BIN_PATH . $executable_name;
-
-        // Windows 系统添加 .exe 后缀
-        if ( $this->is_windows() ) {
-            $bin_path .= '.exe';
-        }
-
-        // Windows 上 is_executable() 不可靠，只检查文件是否存在
-        if ( file_exists( $bin_path ) && ( $this->is_windows() || is_executable( $bin_path ) ) ) {
-            $this->executable_path = $bin_path;
-            return $this->executable_path;
-        }
-
-        // 2. 检查系统 PATH
-        $system_path = $this->find_in_system_path( $executable_name );
-        if ( $system_path ) {
-            $this->executable_path = $system_path;
-            return $this->executable_path;
-        }
-
-        $this->executable_path = false;
-        return false;
+        return $this->executable_path;
     }
 
     /**
-     * 在系统 PATH 中查找可执行文件
+     * 查找可执行文件的完整路径
      *
-     * @param string $executable_name 可执行文件名
+     * 按顺序在这些目录里找：wp-content/local-crush-bin → 设置页填的“工具目录”
+     * → PHP 进程自己的 PATH → Linux 标准目录。
+     *
+     * 不调用 which / where：精简发行版可能根本没装它们，而且 PHP 进程的 PATH
+     * 往往跟登录 shell 的不是同一份，靠外部命令去找等于多押一个未知条件。
+     * 找到后一律返回绝对路径，执行时不再依赖 PATH。
+     *
+     * @param string $name 可执行文件名（不含目录和扩展名）
      * @return string|false 完整路径或 false
      */
-    protected function find_in_system_path( string $executable_name ) {
+    public static function resolve_executable( string $name ) {
+        static $cache = array();
+
+        if ( array_key_exists( $name, $cache ) ) {
+            return $cache[ $name ];
+        }
+
+        // 名字里带目录分隔符说明调用方传错了，拼进搜索目录会越界。
+        if ( '' === $name || false !== strpbrk( $name, '/\\' ) ) {
+            $cache[ $name ] = false;
+            return false;
+        }
+
         if ( ! self::is_command_execution_available() ) {
+            $cache[ $name ] = false;
             return false;
         }
 
-        // 使用 which 或 where 命令查找
-        if ( $this->is_windows() ) {
-            $output = self::run_command( array( 'where', $executable_name ), 15 );
-        } else {
-            $output = self::run_command( array( 'which', $executable_name ), 15 );
-        }
+        // Windows 上工具名带 .exe，这里两种写法都试，免得漏掉无后缀的命令。
+        $file_names = self::is_windows_platform() ? array( $name . '.exe', $name ) : array( $name );
 
-        if ( empty( $output['success'] ) ) {
-            return false;
-        }
+        foreach ( self::tool_search_dirs() as $dir ) {
+            foreach ( $file_names as $file_name ) {
+                $path = $dir . DIRECTORY_SEPARATOR . $file_name;
 
-        // where/which 可能输出多行，逐行找第一个真实存在的文件
-        foreach ( preg_split( '/\R/', (string) $output['output'] ) as $line ) {
-            $path = trim( $line );
-
-            if ( '' !== $path && file_exists( $path ) ) {
-                return $path;
+                if ( self::is_executable_file( $path ) ) {
+                    $cache[ $name ] = $path;
+                    return $path;
+                }
             }
         }
 
+        $cache[ $name ] = false;
         return false;
     }
 
     /**
-     * 检查是否为 Windows 系统
+     * 工具搜索目录，按优先级排列
      *
-     * @return bool 是否为 Windows
+     * @return string[]
      */
-    protected function is_windows(): bool {
+    public static function tool_search_dirs(): array {
+        $dirs = array( LOCAL_CRUSH_BIN_PATH );
+
+        foreach ( self::configured_tool_dirs() as $dir ) {
+            $dirs[] = $dir;
+        }
+
+        $dirs = array_merge( $dirs, self::path_env_dirs() );
+
+        // PHP 进程可能拿不到 PATH（例如 php-fpm 清空环境变量），
+        // 这时兜底扫一遍系统标准目录，apt 装进去的工具才能被找到。
+        if ( ! self::is_windows_platform() ) {
+            $dirs = array_merge( $dirs, array( '/usr/local/bin', '/usr/bin', '/bin' ) );
+        }
+
+        $unique = array();
+
+        foreach ( $dirs as $dir ) {
+            $dir = self::normalize_search_dir( $dir );
+
+            if ( '' !== $dir && ! in_array( $dir, $unique, true ) ) {
+                $unique[] = $dir;
+            }
+        }
+
+        return $unique;
+    }
+
+    /**
+     * 读取设置页填写的工具目录
+     *
+     * 只保留绝对路径，重复项去重；相对路径在这里直接忽略，
+     * 避免工具查找跟着 PHP 的工作目录乱跑。
+     *
+     * @return string[]
+     */
+    public static function configured_tool_dirs(): array {
+        $stored = get_option( 'local_crush_tool_dirs', array() );
+
+        if ( ! is_array( $stored ) ) {
+            return array();
+        }
+
+        $dirs = array();
+
+        foreach ( $stored as $dir ) {
+            if ( ! is_string( $dir ) ) {
+                continue;
+            }
+
+            $dir = trim( $dir );
+
+            if ( ! self::is_absolute_path( $dir ) || in_array( $dir, $dirs, true ) ) {
+                continue;
+            }
+
+            $dirs[] = $dir;
+        }
+
+        return $dirs;
+    }
+
+    /**
+     * 读取 PHP 进程环境变量里的 PATH 条目
+     *
+     * @return string[]
+     */
+    private static function path_env_dirs(): array {
+        $values = array();
+
+        // PATH 由 SAPI 注入，不是请求输入，这里只当作搜索目录读取。
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash
+        $server_path = isset( $_SERVER['PATH'] ) ? $_SERVER['PATH'] : null;
+
+        foreach ( array( getenv( 'PATH' ), $server_path ) as $value ) {
+            if ( is_string( $value ) && '' !== $value ) {
+                $values[] = $value;
+            }
+        }
+
+        $dirs = array();
+
+        foreach ( $values as $value ) {
+            foreach ( explode( PATH_SEPARATOR, $value ) as $dir ) {
+                $dir = trim( $dir );
+
+                if ( '' !== $dir ) {
+                    $dirs[] = $dir;
+                }
+            }
+        }
+
+        return $dirs;
+    }
+
+    /**
+     * 规范化搜索目录：去引号、去末尾分隔符，只保留绝对路径
+     *
+     * @param string $dir 原始目录
+     * @return string 规范化后的目录，非法时为空字符串
+     */
+    private static function normalize_search_dir( string $dir ): string {
+        $dir = trim( $dir );
+
+        // Windows 的 PATH 条目可能带引号。
+        if ( strlen( $dir ) > 1 && '"' === $dir[0] && '"' === substr( $dir, -1 ) ) {
+            $dir = substr( $dir, 1, -1 );
+        }
+
+        if ( ! self::is_absolute_path( $dir ) ) {
+            return '';
+        }
+
+        $trimmed = rtrim( $dir, '/\\' );
+
+        // "C:\" 这种盘符根目录去掉分隔符后要补回去，否则会变成相对路径。
+        if ( '' === $trimmed && self::is_windows_platform() ) {
+            return $dir;
+        }
+
+        return $trimmed;
+    }
+
+    /**
+     * 判断是否绝对路径
+     *
+     * @param string $path 路径
+     * @return bool
+     */
+    public static function is_absolute_path( string $path ): bool {
+        if ( '' === $path ) {
+            return false;
+        }
+
+        if ( self::is_windows_platform() ) {
+            return (bool) preg_match( '/^(?:[A-Za-z]:[\\\\\/]|\\\\\\\\[^\\\\\/])/', $path );
+        }
+
+        return '/' === $path[0];
+    }
+
+    /**
+     * 判断文件是否可作为工具执行
+     *
+     * open_basedir 限制下 is_file() 会发 Warning，这里只需要布尔结果。
+     *
+     * @param string $path 文件路径
+     * @return bool
+     */
+    private static function is_executable_file( string $path ): bool {
+        // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+        if ( ! @is_file( $path ) ) {
+            return false;
+        }
+
+        // Windows 上 is_executable() 不可靠，只检查文件是否存在。
+        if ( self::is_windows_platform() ) {
+            return true;
+        }
+
+        // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+        return @is_executable( $path );
+    }
+
+    /**
+     * 判断当前系统是否为 Windows
+     *
+     * @return bool
+     */
+    public static function is_windows_platform(): bool {
         return 'WIN' === strtoupper( substr( PHP_OS, 0, 3 ) );
     }
 

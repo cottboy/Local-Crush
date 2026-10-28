@@ -2429,56 +2429,14 @@ class Local_Crush_Output {
     /**
      * 查找本地辅助工具（gif2webp、ffmpeg 等）
      *
-     * 优先 wp-content/local-crush-bin 目录，其次系统 PATH。
+     * 统一走 Local_Crush_Tool_Base::resolve_executable()，查找顺序与压缩工具一致。
      * 设置页复用此方法展示辅助工具的安装状态与路径。
      *
      * @param string $name 可执行文件名
      * @return string|false 路径或 false
      */
     public static function find_local_tool( string $name ) {
-        static $cache = array();
-
-        if ( isset( $cache[ $name ] ) ) {
-            return $cache[ $name ];
-        }
-
-        // proc_open() 不可用就执行不了本地工具，直接判为找不到，避免后续调用失败的函数。
-        if ( ! Local_Crush_Tool_Base::is_command_execution_available() ) {
-            $cache[ $name ] = false;
-            return false;
-        }
-
-        $is_windows = 'WIN' === strtoupper( substr( PHP_OS, 0, 3 ) );
-        $candidates = array( LOCAL_CRUSH_BIN_PATH . $name );
-
-        foreach ( $candidates as $bin_path ) {
-            if ( $is_windows ) {
-                $bin_path .= '.exe';
-            }
-            if ( is_file( $bin_path ) ) {
-                $cache[ $name ] = $bin_path;
-                return $bin_path;
-            }
-        }
-
-        $found = Local_Crush_Tool_Base::run_command(
-            array( $is_windows ? 'where' : 'which', $name ),
-            15
-        );
-
-        if ( ! empty( $found['success'] ) ) {
-            foreach ( preg_split( '/\R/', (string) $found['output'] ) as $line ) {
-                $path = trim( $line );
-
-                if ( '' !== $path && file_exists( $path ) ) {
-                    $cache[ $name ] = $path;
-                    return $path;
-                }
-            }
-        }
-
-        $cache[ $name ] = false;
-        return false;
+        return Local_Crush_Tool_Base::resolve_executable( $name );
     }
 
     /**

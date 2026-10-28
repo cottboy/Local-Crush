@@ -56,8 +56,7 @@ class Local_Crush_Avif extends Local_Crush_Tool_Base {
     /**
      * 获取解码器（avifdec）路径
      *
-     * 查找逻辑与 get_executable_path() 一致：优先 wp-content/local-crush-bin 目录，其次系统 PATH。
-     * public 供设置页展示解码器的安装状态与路径。
+     * 查找顺序与编码器一致，public 供设置页展示解码器的安装状态与路径。
      *
      * @return string|false 解码器路径或 false
      */
@@ -67,19 +66,8 @@ class Local_Crush_Avif extends Local_Crush_Tool_Base {
             return $this->decoder_path;
         }
 
-        $bin_path = LOCAL_CRUSH_BIN_PATH . 'avifdec';
+        $this->decoder_path = self::resolve_executable( 'avifdec' );
 
-        // Windows 系统添加 .exe 后缀
-        if ( $this->is_windows() ) {
-            $bin_path .= '.exe';
-        }
-
-        if ( file_exists( $bin_path ) && ( $this->is_windows() || is_executable( $bin_path ) ) ) {
-            $this->decoder_path = $bin_path;
-            return $this->decoder_path;
-        }
-
-        $this->decoder_path = $this->find_in_system_path( 'avifdec' );
         return $this->decoder_path;
     }
 

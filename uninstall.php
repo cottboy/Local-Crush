@@ -26,6 +26,7 @@ $wpdb->query( "DROP TABLE IF EXISTS {$backups_table}" );
 // 删除设置项
 delete_option( 'local_crush_general' );
 delete_option( 'local_crush_tools' );
+delete_option( 'local_crush_tool_dirs' );
 delete_option( 'local_crush_db_version' );
 delete_option( 'local_crush_task' );
 

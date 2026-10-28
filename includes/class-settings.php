@@ -884,6 +884,15 @@ class Local_Crush_Settings {
         return ! isset( $general['strip_metadata'] ) || (bool) $general['strip_metadata'];
     }
 
+    /**
+     * 设置页填写的工具目录
+     *
+     * @return string[]
+     */
+    public static function tool_dirs(): array {
+        return Local_Crush_Tool_Base::configured_tool_dirs();
+    }
+
     public function __construct() {
         $this->init_hooks();
     }
@@ -915,6 +924,59 @@ class Local_Crush_Settings {
             'local_crush_tools',
             array( $this, 'sanitize_tools_settings' )
         );
+
+        register_setting(
+            'local_crush_tool_dirs_group',
+            'local_crush_tool_dirs',
+            array( $this, 'sanitize_tool_dirs' )
+        );
+    }
+
+    /**
+     * 保存工具目录
+     *
+     * 一行一个目录，只接受绝对路径；不是绝对路径的条目直接丢掉并提示，
+     * 免得相对路径让工具查找跟着 PHP 的工作目录乱跑。目录是否存在不拦，
+     * 页面会单独列出不存在的条目，方便先填后装。
+     *
+     * @param mixed $input 表单提交值
+     * @return string[]
+     */
+    public function sanitize_tool_dirs( $input ) {
+        $lines = is_string( $input ) ? preg_split( '/\R/', $input ) : array();
+        $dirs  = array();
+        $bad   = array();
+
+        foreach ( (array) $lines as $line ) {
+            $line = trim( (string) $line );
+
+            if ( '' === $line ) {
+                continue;
+            }
+
+            if ( ! Local_Crush_Tool_Base::is_absolute_path( $line ) ) {
+                $bad[] = $line;
+                continue;
+            }
+
+            if ( ! in_array( $line, $dirs, true ) ) {
+                $dirs[] = $line;
+            }
+        }
+
+        if ( ! empty( $bad ) ) {
+            add_settings_error(
+                'local_crush_tool_dirs',
+                'local_crush_tool_dirs_invalid',
+                sprintf(
+                    /* translators: %s: 被忽略的条目，多个用顿号分隔 */
+                    __( '以下条目不是绝对路径，已忽略：%s', 'local-crush' ),
+                    implode( '、', $bad )
+                )
+            );
+        }
+
+        return $dirs;
     }
 
     public function sanitize_general_settings( $input ) {
@@ -988,6 +1050,8 @@ class Local_Crush_Settings {
         ?>
         <div class="wrap">
             <h1><?php esc_html_e( 'Local Crush', 'local-crush' ); ?></h1>
+
+            <?php settings_errors(); ?>
 
             <nav class="nav-tab-wrapper">
                 <a href="<?php echo esc_url( admin_url( 'options-general.php?page=local-crush&tab=general' ) ); ?>" class="nav-tab <?php echo 'general' === $this->current_tab ? 'nav-tab-active' : ''; ?>">
@@ -1323,7 +1387,7 @@ class Local_Crush_Settings {
             array( 'name' => 'webpmux', 'tool' => null, 'path' => $output_processor->find_local_tool( 'webpmux' ), 'url' => 'https://developers.google.com/speed/webp/download' ),
             array( 'name' => 'avifenc', 'tool' => null, 'path' => $output_processor->find_local_tool( 'avifenc' ), 'url' => 'https://github.com/AOMediaCodec/libavif' ),
             array( 'name' => 'avifdec', 'tool' => null, 'path' => $output_processor->find_local_tool( 'avifdec' ), 'url' => 'https://github.com/AOMediaCodec/libavif' ),
-            array( 'name' => 'cjxl', 'tool' => isset( $tools['cjxl'] ) ? $tools['cjxl'] : null, 'path' => $output_processor->find_local_tool( 'cjxl' ), 'url' => 'https://github.com/libjxl/libjxl/releases' ),
+            array( 'name' => 'cjxl', 'tool' => isset( $tools['cjxl'] ) ? $tools['cjxl'] : null, 'path' => $output_processor->find_local_tool( 'cjxl' ), 'url' => 'https://github.com/libjxl/libjxl' ),
             array( 'name' => 'oxvg', 'tool' => $tools['oxvg'] ),
             array( 'name' => 'ffprobe', 'tool' => null, 'path' => $output_processor->find_local_tool( 'ffprobe' ), 'url' => 'https://ffmpeg.org/download.html' ),
             array( 'name' => 'ffmpeg', 'tool' => null, 'path' => $output_processor->find_local_tool( 'ffmpeg' ), 'url' => 'https://ffmpeg.org/download.html' ),
@@ -1411,8 +1475,41 @@ class Local_Crush_Settings {
         </table>
 
         <p class="description" style="max-width: 900px; margin-top: 10px;">
-            <?php esc_html_e( '安装方式：① 把可执行文件直接放进 /wp-content/local-crush-bin 目录；② 把工具所在文件夹加入系统 Path 环境变量；③ 使用包管理器安装。', 'local-crush' ); ?>
+            <?php esc_html_e( '安装方式：① 把可执行文件直接放进 /wp-content/local-crush-bin 目录；② 把工具所在文件夹填到下面的“工具目录”；③ 用包管理器安装（Linux 上 apt 会装到 /usr/bin、/usr/local/bin，插件会自动找）；④ Windows 上改系统 Path 后必须重启 PHP / Apache 才生效，Linux 上在 shell 里改 PATH 对 PHP 无效，建议用“工具目录”。', 'local-crush' ); ?>
         </p>
+
+        <?php
+        $configured_dirs = Local_Crush_Settings::tool_dirs();
+        $missing_dirs    = array();
+
+        foreach ( $configured_dirs as $dir ) {
+            if ( ! is_dir( $dir ) ) {
+                $missing_dirs[] = $dir;
+            }
+        }
+        ?>
+        <form method="post" action="options.php" style="max-width: 900px; margin-top: 18px;">
+            <?php settings_fields( 'local_crush_tool_dirs_group' ); ?>
+            <h2 style="margin: 0 0 6px;"><?php esc_html_e( '工具目录', 'local-crush' ); ?></h2>
+            <div style="display: flex; gap: 8px; align-items: stretch;">
+                <textarea id="local-crush-tool-dirs" name="local_crush_tool_dirs" rows="1" class="large-text code" spellcheck="false" style="flex: 1 1 auto; min-width: 0; width: auto; min-height: 40px; margin: 0; font-size: 14px; line-height: 20px;"><?php echo esc_textarea( implode( "\n", $configured_dirs ) ); ?></textarea>
+                <?php submit_button( __( '保存工具目录', 'local-crush' ), 'secondary', 'submit', false, array( 'style' => 'flex: 0 0 auto; align-self: flex-start; margin: 0;' ) ); ?>
+            </div>
+            <p class="description" style="margin: 4px 0 0;">
+                <?php esc_html_e( '一行一个绝对路径。工具解压在别的文件夹时填这里；用包管理器装到 /usr/bin、/usr/local/bin 的不用填。', 'local-crush' ); ?>
+            </p>
+            <?php if ( ! empty( $missing_dirs ) ) : ?>
+                <p class="description" style="margin: 4px 0 0; color: #b32d2e;">
+                    <?php
+                    printf(
+                        /* translators: %s: 不存在的目录，多个用顿号分隔 */
+                        esc_html__( '这些目录不存在，暂时不会参与查找：%s', 'local-crush' ),
+                        esc_html( implode( '、', $missing_dirs ) )
+                    );
+                    ?>
+                </p>
+            <?php endif; ?>
+        </form>
 
         <h2 style="margin-top: 30px;"><?php esc_html_e( '路径支持状态', 'local-crush' ); ?></h2>
         <table class="widefat" style="max-width: 900px;">

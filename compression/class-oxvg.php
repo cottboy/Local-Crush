@@ -129,7 +129,7 @@ class Local_Crush_Oxvg extends Local_Crush_Tool_Base {
      * @return string 下载链接
      */
     public function get_download_url(): string {
-        return 'https://github.com/noahbald/oxvg/releases';
+        return 'https://github.com/noahbald/oxvg';
     }
 
     /**

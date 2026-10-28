@@ -38,7 +38,7 @@ Local Crush 是一个完全在服务器本地运行的图片压缩插件。图�
 
 1. 将插件目录上传到 `/wp-content/plugins/`，或在 WordPress 后台直接安装 ZIP。
 2. 在后台启用 Local Crush。
-3. 安装需要的命令行工具。可以放进 `/wp-content/local-crush-bin/`，也可以加入系统 `PATH`。
+3. 安装需要的命令行工具。可以放进 `/wp-content/local-crush-bin/`，也可以把工具所在目录填到“设置 → Local Crush → 压缩工具”的“工具目录”；用包管理器安装到 `/usr/bin`、`/usr/local/bin` 的会被自动找到。注意：Linux 上在终端里改 `PATH` 对 PHP 无效，Windows 上改系统 Path 后需要重启 PHP / Apache。
 4. 打开“设置 → Local Crush”，在“压缩工具”页检查工具状态并调整参数。
 
 插件不携带压缩工具的二进制文件，需要按页面上的工具清单自行安装。

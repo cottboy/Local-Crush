@@ -159,7 +159,7 @@ class Local_Crush_Cjxl extends Local_Crush_Tool_Base {
      * @return string 下载链接
      */
     public function get_download_url(): string {
-        return 'https://github.com/libjxl/libjxl/releases';
+        return 'https://github.com/libjxl/libjxl';
     }
 
     /**
