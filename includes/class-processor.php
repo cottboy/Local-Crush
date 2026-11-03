@@ -1569,7 +1569,7 @@ class Local_Crush_Processor {
      * 目标文件已经重新生成好的，地址原样还原；目标这次没生成出来的分两种情况：
      * 原来指向主图的改成当前主文件（关闭自动缩放后缩放图不再生成，主图就是原图本身），
      * 原来指向缩略图的按像素面积挑一个最接近的现有尺寸顶上，平手选更大的；
-     * 一个现有尺寸都没有时保持原样——正文里那条链接指向的文件这次已被删除，
+     * 一个现有尺寸都没有时保持原样——全站那条链接指向的文件这次已被删除，
      * 能改就必须改掉，否则读者看到的是打不开的图。
      *
      * @param int $attachment_id 附件 ID
@@ -1630,7 +1630,7 @@ class Local_Crush_Processor {
 
         $replaced = 0;
 
-        return local_crush()->output_processor->update_content_references( $replacements, $replaced );
+        return local_crush()->references->update_references( $replacements, $replaced );
     }
 
     /**
@@ -2058,7 +2058,7 @@ class Local_Crush_Processor {
      * 写入恢复中间状态
      *
      * 记录正文链接的还原目标：缩略图要等 finish 阶段重新生成后才知道文件在不在，
-     * 恢复中断后继续收尾时靠这份记录把正文链接改完，不会漏掉已经固化在文章里的旧地址。
+     * 恢复中断后继续收尾时靠这份记录把图片链接改完，不会漏掉已经固化在内容里的旧地址。
      *
      * @param int   $attachment_id 附件 ID
      * @param array $links         正文链接还原目标
@@ -2146,7 +2146,7 @@ class Local_Crush_Processor {
     /**
      * 删除附件的兼容格式回退文件
      *
-     * 只删除仍有对应新格式文件的旧格式文件，并把正文里指向旧格式的链接改到新格式，
+     * 只删除仍有对应新格式文件的旧格式文件，并把全站指向旧格式的链接改到新格式，
      * 删除后不支持新格式的浏览器也统一加载新格式图片。
      *
      * @param int $attachment_id 附件 ID
@@ -2201,9 +2201,9 @@ class Local_Crush_Processor {
                 return $result;
             }
 
-            // 先把正文里固化的旧格式地址改到仍存在的新格式，成功后才删除旧文件。
+            // 先把全站固化的旧格式地址改到仍存在的新格式，成功后才删除旧文件。
             $replaced              = 0;
-            $updated               = local_crush()->output_processor->update_content_references( $pairs, $replaced );
+            $updated               = local_crush()->references->update_references( $pairs, $replaced );
             $result['replaced']    = $replaced;
             if ( ! $updated ) {
                 $result['failed'] = true;

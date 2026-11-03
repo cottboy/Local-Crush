@@ -351,6 +351,7 @@ function local_crush_load_dependencies() {
     require_once LOCAL_CRUSH_PATH . 'includes/class-naming.php';
     require_once LOCAL_CRUSH_PATH . 'includes/class-animation.php';
     require_once LOCAL_CRUSH_PATH . 'includes/class-compressor.php';
+    require_once LOCAL_CRUSH_PATH . 'includes/class-references.php';
     require_once LOCAL_CRUSH_PATH . 'includes/class-converter.php';
     require_once LOCAL_CRUSH_PATH . 'includes/class-processor.php';
     require_once LOCAL_CRUSH_PATH . 'includes/class-task.php';

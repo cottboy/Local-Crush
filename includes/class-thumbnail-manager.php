@@ -256,7 +256,7 @@ class Local_Crush_Thumbnail_Manager {
 
             $replaced = 0;
 
-            if ( ! local_crush()->output_processor->update_content_references( $replacements, $replaced ) ) {
+            if ( ! local_crush()->references->update_references( $replacements, $replaced ) ) {
                 return array(
                     'deleted'        => $deleted_base,
                     'replaced'       => $replaced_base + $replaced,
@@ -374,7 +374,7 @@ class Local_Crush_Thumbnail_Manager {
      *
      * 删除按钮与恢复原图都要把正文链接改到仍然存在的尺寸上，共用同一套挑选规则。
      * 原图也在这套候选里：它的面积通常差得最远，自然排在最后，只有真的最接近时才轮到它。
-     * 不设“差太多就放弃”的门槛——放弃一支尺寸就会让正文里的图打不开。
+     * 不设“差太多就放弃”的门槛——放弃一支尺寸就会让页面里的图打不开。
      *
      * @param array $victim     被删尺寸的文件与宽高
      * @param array $candidates 仍然存在的候选尺寸
@@ -955,8 +955,8 @@ class Local_Crush_Thumbnail_Manager {
 
             $deleted = 1;
 
-            // 正文里固化的缩放图地址改回原图
-            local_crush()->output_processor->update_content_references(
+            // 全站固化的缩放图地址改回原图
+            local_crush()->references->update_references(
                 array(
                     array(
                         'from' => $main_abs,
@@ -1062,9 +1062,9 @@ class Local_Crush_Thumbnail_Manager {
 
         $replaced = 0;
 
-        // 主文件名变化时，正文里固化的旧地址改到新缩放图
+        // 主文件名变化时，全站固化的旧地址改到新缩放图
         if ( $this->normalized_path( $scaled_rel ) !== $this->normalized_path( $context['main_rel'] ) ) {
-            local_crush()->output_processor->update_content_references(
+            local_crush()->references->update_references(
                 array(
                     array(
                         'from' => $main_abs,

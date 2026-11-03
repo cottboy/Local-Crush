@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * 将勾选格式的图片（PNG/JPG/GIF）压缩输出为 WebP 或 AVIF，是统一压缩入口
  * 的一部分：结果小于源文件时生成真实的新文件并接管附件引用，同步附件路径、元数据、
- * MIME 和文章内已固化的图片链接。
+ * MIME 和全站已固化的图片链接。
  *
  * 新格式以"源文件名.目标格式"的双扩展名生成（photo.jpg → photo.jpg.webp）。旧格式文件
  * 是否留下由兼容格式回退开关决定：开启时原地保留并同样经过压缩，作为前台 <picture> 的
@@ -34,13 +34,6 @@ class Local_Crush_Output {
      * @var string
      */
     const OUTPUT_META_KEY = '_local_crush_output';
-
-    /**
-     * 正文链接扫描的单页文章数量
-     *
-     * @var int
-     */
-    const REFERENCE_BATCH_SIZE = 100;
 
     /**
      * 目标格式对应的编码工具注册名
@@ -710,7 +703,7 @@ class Local_Crush_Output {
     /**
      * 提交格式转换结果
      *
-     * 顺序固定为：附件路径与元数据 → MIME → 文章内图片链接。
+     * 顺序固定为：附件路径与元数据 → MIME → 全站图片链接。
      * 旧格式文件是否保留由兼容格式回退开关决定：开启时原地留作回退，提交不删除任何源文件；
      * 关闭时提交成功后删除源文件，新格式完整替换。任一步失败都把引用退回源文件并把记录写成
      * 失败，下次执行凭映射继续提交，不会留下指向已删除文件的引用。
@@ -737,8 +730,8 @@ class Local_Crush_Output {
             return $this->abort_commit( $attachment_id, $snapshot, $entries, __( '附件 MIME 类型同步失败，已保留原文件', 'local-crush' ) );
         }
 
-        if ( ! $this->update_content_references( $this->reference_pairs( $entries, false ) ) ) {
-            return $this->abort_commit( $attachment_id, $snapshot, $entries, __( '文章图片链接替换失败，已保留原文件', 'local-crush' ) );
+        if ( ! local_crush()->references->update_references( $this->reference_pairs( $entries, false ) ) ) {
+            return $this->abort_commit( $attachment_id, $snapshot, $entries, __( '图片链接替换失败，已保留原文件', 'local-crush' ) );
         }
 
         // 引用和正文链接都已指向新格式，这时删除旧格式源文件才不会留下任何悬空引用。
@@ -819,7 +812,7 @@ class Local_Crush_Output {
     private function abort_commit( int $attachment_id, array $snapshot, array $entries, string $message ): bool {
         // 源文件原地保留，回退引用永远有文件可指。
         $this->restore_reference_snapshot( $attachment_id, $snapshot );
-        $this->update_content_references( $this->reference_pairs( $entries, true ) );
+        local_crush()->references->update_references( $this->reference_pairs( $entries, true ) );
 
         foreach ( $entries as $entry ) {
             $size  = file_exists( $entry['from'] ) ? (int) filesize( $entry['from'] ) : 0;
@@ -1361,7 +1354,7 @@ class Local_Crush_Output {
     }
 
     /**
-     * 生成正文链接替换用的路径对
+     * 生成图片链接替换用的路径对
      *
      * @param array $entries 条目集合
      * @param bool  $reverse 是否反向（转换结果 → 源文件）
@@ -1444,7 +1437,7 @@ class Local_Crush_Output {
             }
         }
 
-        return $this->update_content_references( $this->reference_pairs( $mapped, true ) );
+        return local_crush()->references->update_references( $this->reference_pairs( $mapped, true ) );
     }
 
     /**
@@ -1640,8 +1633,8 @@ class Local_Crush_Output {
             return null;
         }
 
-        // 正文里固化的旧地址先改到新名字，失败时磁盘和元数据都还没动。
-        if ( ! $this->update_content_references(
+        // 全站已固化的旧地址先改到新名字，失败时磁盘和元数据都还没动。
+        if ( ! local_crush()->references->update_references(
             array(
                 array(
                     'from' => $file_path,
@@ -1669,7 +1662,7 @@ class Local_Crush_Output {
             if ( $is_source ) {
                 $this->write_attached_file( $attachment_id, $file_path );
             }
-            $this->update_content_references(
+            local_crush()->references->update_references(
                 array(
                     array(
                         'from' => $new_path,
@@ -1690,7 +1683,7 @@ class Local_Crush_Output {
             if ( $is_source ) {
                 $this->write_attached_file( $attachment_id, $file_path );
             }
-            $this->update_content_references(
+            local_crush()->references->update_references(
                 array(
                     array(
                         'from' => $new_path,
@@ -1923,390 +1916,6 @@ class Local_Crush_Output {
             $status,
             $message
         );
-    }
-
-    /**
-     * 分页更新文章中的图片链接
-     *
-     * 新格式接管附件引用，正文里已固化的旧地址必须一并改写，否则读者点的还是旧格式图；
-     * 关闭兼容格式回退时源文件随后即被删除，不改写更会直接 404。写入前比较原内容，
-     * 避免覆盖用户在编辑器和别处同时做出的修改。
-     *
-     * @param array $replacements 每项包含 from 和 to 绝对路径
-     * @param int   $replaced     输出参数：实际替换掉的引用数量
-     * @return bool 是否全部更新成功
-     */
-    public function update_content_references( array $replacements, &$replaced = 0 ): bool {
-        global $wpdb;
-
-        $replaced = 0;
-
-        // 同一对地址可能出现多次（共用文件的尺寸各记一条映射）：先去重，
-        // 否则替换本身幂等无碍，“替换了 N 处”的计数会按重复对翻倍。
-        $unique_pairs = array();
-        $unique_keys  = array();
-
-        foreach ( $replacements as $replacement ) {
-            $key = $this->normalized_path( (string) $replacement['from'] ) . '|' . $this->normalized_path( (string) $replacement['to'] );
-
-            if ( isset( $unique_keys[ $key ] ) ) {
-                continue;
-            }
-
-            $unique_keys[ $key ] = true;
-            $unique_pairs[]      = $replacement;
-        }
-
-        $replacements = $unique_pairs;
-
-        if ( empty( $replacements ) ) {
-            return true;
-        }
-
-        $like_sql  = array();
-        $like_args = array();
-
-        foreach ( $replacements as $replacement ) {
-            $needle = $this->content_path_of( $replacement['from'] );
-
-            if ( '' === $needle ) {
-                continue;
-            }
-
-            // SQL 侧只做粗筛：同时匹配普通路径和区块 JSON 里 \/ 的转义写法，精确判断交给替换逻辑。
-            foreach ( array( $needle, str_replace( '/', '\\/', $needle ) ) as $pattern ) {
-                $like_sql[]  = 'post_content LIKE %s';
-                $like_args[] = '%' . $wpdb->esc_like( $pattern ) . '%';
-            }
-        }
-
-        if ( empty( $like_sql ) ) {
-            return true;
-        }
-
-        $after_id = 0;
-        $success  = true;
-
-        do {
-            // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- 每个 LIKE 片段都是固定的 %s 占位符，模式经 esc_like 处理后由 prepare 逐一绑定，参数数量与占位符一致；这里分页改写正文，没有可缓存对象。
-            $posts = $wpdb->get_results(
-                $wpdb->prepare(
-                    "SELECT ID, post_content FROM {$wpdb->posts}
-                    WHERE ID > %d
-                    AND post_type <> 'revision'
-                    AND post_status NOT IN ('trash', 'auto-draft')
-                    AND ( " . implode( ' OR ', $like_sql ) . ' )
-                    ORDER BY ID ASC
-                    LIMIT %d',
-                    array_merge( array( $after_id ), $like_args, array( self::REFERENCE_BATCH_SIZE ) )
-                )
-            );
-            // phpcs:enable
-
-            $posts     = is_array( $posts ) ? $posts : array();
-            $page_size = count( $posts );
-
-            foreach ( $posts as $post ) {
-                $post_id = (int) $post->ID;
-                $content = (string) $post->post_content;
-                $updated = $this->replace_content_references( $content, $replacements );
-
-                $after_id = max( $after_id, $post_id );
-
-                if ( $updated === $content ) {
-                    continue;
-                }
-
-                if ( $this->write_post_content( $post_id, $content, $updated ) ) {
-                    $replaced += $this->count_missing_references( $content, $updated, $replacements );
-                    continue;
-                }
-
-                // 写入未生效：可能已被并发修改，重读最新内容后再替换一次。
-                $current = $this->read_post_content( $post_id );
-
-                if ( $current === $content ) {
-                    $success = false;
-                    continue;
-                }
-
-                $retry = $this->replace_content_references( $current, $replacements );
-
-                if ( $retry === $current ) {
-                    continue;
-                }
-
-                if ( $this->write_post_content( $post_id, $current, $retry ) ) {
-                    $replaced += $this->count_missing_references( $current, $retry, $replacements );
-                } else {
-                    $success = false;
-                }
-            }
-        } while ( $page_size >= self::REFERENCE_BATCH_SIZE );
-
-        return $success;
-    }
-
-    /**
-     * 统计一次改写实际消除了多少处引用
-     *
-     * 同一个文件在 srcset 里可能出现多次，按出现次数计更接近用户看到的“替换了多少链接”。
-     *
-     * 必须按新地址统计：新文件名是旧文件名再加一段扩展名（photo.jpg → photo.jpg.webp），
-     * 旧地址是新地址的前缀，用旧地址做子串统计时改写后的正文里仍能匹配到同名前缀，
-     * 一减永远是 0。
-     *
-     * @param string $before       改写前的正文
-     * @param string $after        改写后的正文
-     * @param array  $replacements 每项包含 from、to 绝对路径
-     * @return int
-     */
-    private function count_missing_references( string $before, string $after, array $replacements ): int {
-        $count = 0;
-
-        foreach ( $replacements as $replacement ) {
-            $needle = $this->content_path_of( $replacement['to'] );
-
-            if ( '' === $needle ) {
-                continue;
-            }
-
-            $needles = array( $needle );
-            $encoded = $this->encode_url_path( $needle );
-
-            if ( $encoded !== $needle ) {
-                $needles[] = $encoded;
-            }
-
-            foreach ( $needles as $current ) {
-                $count += max( 0, substr_count( $after, $current ) - substr_count( $before, $current ) );
-            }
-        }
-
-        return $count;
-    }
-
-    /**
-     * 读取文章内容
-     *
-     * @param int $post_id 文章 ID
-     * @return string
-     */
-    private function read_post_content( int $post_id ): string {
-        global $wpdb;
-
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-        return (string) $wpdb->get_var(
-            $wpdb->prepare( "SELECT post_content FROM {$wpdb->posts} WHERE ID = %d", $post_id )
-        );
-    }
-
-    /**
-     * 比较原内容后写入文章内容
-     *
-     * @param int    $post_id  文章 ID
-     * @param string $expected 读取到的原内容
-     * @param string $content  新内容
-     * @return bool 是否写入成功
-     */
-    private function write_post_content( int $post_id, string $expected, string $content ): bool {
-        global $wpdb;
-
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-        $updated = $wpdb->update(
-            $wpdb->posts,
-            array( 'post_content' => $content ),
-            array(
-                'ID'           => $post_id,
-                'post_content' => $expected,
-            ),
-            array( '%s' ),
-            array( '%d', '%s' )
-        );
-
-        if ( 1 !== (int) $updated ) {
-            return false;
-        }
-
-        clean_post_cache( $post_id );
-
-        return true;
-    }
-
-    /**
-     * 按实际映射替换内容中的图片地址
-     *
-     * 只替换文件名部分，保留协议、域名、查询参数、锚点和 srcset 的候选结构；
-     * 同时兼容区块 JSON 里被转义成 \/ 的路径，外站地址与同名前缀文件不动。
-     *
-     * @param string $content     文章内容
-     * @param array  $replacements 每项包含 from 和 to 绝对路径
-     * @return string
-     */
-    public function replace_content_references( string $content, array $replacements ): string {
-        foreach ( $replacements as $replacement ) {
-            $content = $this->replace_reference_in_content( $content, $replacement['from'], $replacement['to'] );
-        }
-
-        return $content;
-    }
-
-    /**
-     * 替换内容中指向某个 uploads 文件的地址
-     *
-     * @param string $content  文章内容
-     * @param string $from     源文件绝对路径
-     * @param string $to       结果文件绝对路径
-     * @return string
-     */
-    private function replace_reference_in_content( string $content, string $from, string $to ): string {
-        $needle = $this->content_path_of( $from );
-
-        if ( '' === $needle ) {
-            return $content;
-        }
-
-        $new_name = basename( $this->content_path_of( $to ) );
-
-        if ( '' === $new_name ) {
-            return $content;
-        }
-
-        $content = $this->replace_reference_needle( $content, $needle, $new_name );
-
-        // 编辑器或浏览器可能把中文等非 ASCII 文件名存成百分号编码，
-        // 只匹配原始路径会让这些链接在源文件删除后变成死链。
-        $encoded_needle = $this->encode_url_path( $needle );
-
-        if ( $encoded_needle !== $needle ) {
-            $content = $this->replace_reference_needle( $content, $encoded_needle, rawurlencode( $new_name ) );
-        }
-
-        return $content;
-    }
-
-    /**
-     * 把内容里的一个 URL 路径文件名替换成新文件名
-     *
-     * @param string $content  文章内容
-     * @param string $needle   uploads 内的 URL 路径
-     * @param string $new_name 新文件名（已按 needle 的编码方式处理）
-     * @return string
-     */
-    private function replace_reference_needle( string $content, string $needle, string $new_name ): string {
-        if ( false === strpos( str_replace( '\\', '', $content ), str_replace( '\\', '', $needle ) ) ) {
-            return $content;
-        }
-
-        $separator = '(?:\\\\)?/';
-        $filename  = basename( $needle );
-        $directory = rtrim( dirname( $needle ), '/' );
-        $pattern   = $separator;
-
-        foreach ( explode( '/', $directory ) as $segment ) {
-            if ( '' === $segment ) {
-                continue;
-            }
-
-            $pattern .= preg_quote( $segment, '#' ) . $separator;
-        }
-
-        // 文件名后面必须正好结束，避免把 a.jpg.extra 这类不同的文件一起改掉。
-        $pattern .= '(?P<file>' . preg_quote( $filename, '#' ) . ')(?![\w.\-%~/-])(?![\\\\])';
-
-        $matches = array();
-        // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-        if ( ! preg_match_all( '#' . $pattern . '#i', $content, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE ) ) {
-            return $content;
-        }
-
-        // 从后往前替换，避免前面的替换让后面的偏移失效。
-        for ( $index = count( $matches ) - 1; $index >= 0; $index-- ) {
-            if ( ! isset( $matches[ $index ][0][1], $matches[ $index ]['file'][1] ) ) {
-                continue;
-            }
-
-            $file_offset = (int) $matches[ $index ]['file'][1];
-
-            // 以整段路径的起点判断宿主，匹配段自身以 / 开头，前面的内容正好是协议和域名。
-            if ( ! $this->content_host_allowed( substr( $content, 0, (int) $matches[ $index ][0][1] ) ) ) {
-                continue;
-            }
-
-            $content = substr_replace( $content, $new_name, $file_offset, strlen( $matches[ $index ]['file'][0] ) );
-        }
-
-        return $content;
-    }
-
-    /**
-     * 按 URL 路径逐段做百分号编码，保留目录分隔符
-     *
-     * @param string $path URL 路径
-     * @return string
-     */
-    private function encode_url_path( string $path ): string {
-        return implode( '/', array_map( 'rawurlencode', explode( '/', $path ) ) );
-    }
-
-    /**
-     * 把上传目录内的文件路径转换为站点内的 URL 路径
-     *
-     * @param string $file_path 绝对路径
-     * @return string 无法定位时返回空字符串
-     */
-    private function content_path_of( string $file_path ): string {
-        $upload    = wp_get_upload_dir();
-        $base_path = isset( $upload['baseurl'] ) ? wp_parse_url( $upload['baseurl'], PHP_URL_PATH ) : '';
-        $base_dir  = isset( $upload['basedir'] ) ? $upload['basedir'] : '';
-
-        if ( ! is_string( $base_path ) || '' === $base_path || '' === $base_dir ) {
-            return '';
-        }
-
-        $relative = $this->get_relative_upload_path( $file_path );
-
-        if ( $relative === $this->normalized_path( $file_path ) ) {
-            // 不在上传目录内，没有可替换的站点路径。
-            return '';
-        }
-
-        return untrailingslashit( $base_path ) . '/' . ltrim( $relative, '/' );
-    }
-
-    /**
-     * 判断待替换地址的宿主是否属于本站上传目录
-     *
-     * @param string $prefix 匹配位置之前的内容
-     * @return bool
-     */
-    private function content_host_allowed( string $prefix ): bool {
-        $delimiters = "\"'<> \t\n\r(),;=[]{}";
-        $start      = strlen( $prefix );
-
-        while ( $start > 0 && false === strpos( $delimiters, $prefix[ $start - 1 ] ) ) {
-            $start--;
-        }
-
-        $token = str_replace( '\\', '', substr( $prefix, $start ) );
-
-        // 站内相对路径
-        if ( '' === $token ) {
-            return true;
-        }
-
-        if ( ! preg_match( '~^(?:[a-z][a-z0-9+.\-]*:)?(?://(?P<host>[^/?#]*))?$~i', $token, $matched ) ) {
-            return false;
-        }
-
-        if ( empty( $matched['host'] ) ) {
-            return false;
-        }
-
-        $upload    = wp_get_upload_dir();
-        $base_host = isset( $upload['baseurl'] ) ? wp_parse_url( $upload['baseurl'], PHP_URL_HOST ) : '';
-
-        return is_string( $base_host ) && strtolower( $matched['host'] ) === strtolower( $base_host );
     }
 
     /**

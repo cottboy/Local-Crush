@@ -1288,7 +1288,7 @@ class Local_Crush_Settings {
                     </button>
                 </td>
                 <td style="padding: 10px 0;">
-                    <span class="description"><?php esc_html_e( '删除媒体库中转换后保留的旧格式回退文件，并把文章里指向它们的图片链接改到新格式；删除后不支持新格式的浏览器将直接加载新格式图片', 'local-crush' ); ?></span>
+                    <span class="description"><?php esc_html_e( '删除媒体库中转换后保留的旧格式回退文件，并把全站指向它们的图片链接改到新格式；删除后不支持新格式的浏览器将直接加载新格式图片', 'local-crush' ); ?></span>
                 </td>
             </tr>
             <tr>
@@ -1308,7 +1308,7 @@ class Local_Crush_Settings {
                     </button>
                 </td>
                 <td style="padding: 10px 0;">
-                    <span class="description"><?php esc_html_e( '删除未勾选尺寸已存在的缩略图，文章里指向它们的图片链接会改到面积最接近的现有尺寸；若关闭了自动缩放，或现有 -scaled 缩放图与阈值不符，也会删除缩放图让主图退回原图', 'local-crush' ); ?></span>
+                    <span class="description"><?php esc_html_e( '删除未勾选尺寸已存在的缩略图，全站指向它们的图片链接会改到面积最接近的现有尺寸；若关闭了自动缩放，或现有 -scaled 缩放图与阈值不符，也会删除缩放图让主图退回原图', 'local-crush' ); ?></span>
                 </td>
             </tr>
             <tr>
@@ -1318,7 +1318,7 @@ class Local_Crush_Settings {
                     </button>
                 </td>
                 <td style="padding: 10px 0;">
-                    <span class="description"><?php esc_html_e( '为已勾选但缺失的尺寸补生成缩略图；若开启了自动缩放且主图超过阈值，还会生成或修正 -scaled 缩放图。不会重建已存在的缩略图，纯缩略图缺失也不改动文章链接', 'local-crush' ); ?></span>
+                    <span class="description"><?php esc_html_e( '为已勾选但缺失的尺寸补生成缩略图；若开启了自动缩放且主图超过阈值，还会生成或修正 -scaled 缩放图。不会重建已存在的缩略图，纯缩略图缺失也不改动图片链接', 'local-crush' ); ?></span>
                 </td>
             </tr>
         </table>
