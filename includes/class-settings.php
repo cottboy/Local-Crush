@@ -1051,8 +1051,6 @@ class Local_Crush_Settings {
         <div class="wrap">
             <h1><?php esc_html_e( 'Local Crush', 'local-crush' ); ?></h1>
 
-            <?php settings_errors(); ?>
-
             <nav class="nav-tab-wrapper">
                 <a href="<?php echo esc_url( admin_url( 'options-general.php?page=local-crush&tab=general' ) ); ?>" class="nav-tab <?php echo 'general' === $this->current_tab ? 'nav-tab-active' : ''; ?>">
                     <?php esc_html_e( '基本设置', 'local-crush' ); ?>
