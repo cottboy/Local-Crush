@@ -36,7 +36,8 @@
             '#local-crush-delete-all-fallbacks': { type: 'delete_fallbacks', confirm: 'confirmDeleteAllFallbacks' },
             '#local-crush-delete-all-originals': { type: 'delete_originals', confirm: 'confirmDeleteAllOriginals' },
             '#local-crush-delete-thumbnails': { type: 'delete_thumbnails', confirm: 'confirmDeleteThumbnails' },
-            '#local-crush-generate-thumbnails': { type: 'generate_thumbnails', confirm: 'confirmGenerateThumbnails' }
+            '#local-crush-generate-thumbnails': { type: 'generate_thumbnails', confirm: 'confirmGenerateThumbnails' },
+            '#local-crush-unlock-thumbnails': { type: 'unlock_thumbnails', confirm: 'confirmUnlockThumbnails' }
         },
 
         /**

@@ -1321,6 +1321,16 @@ class Local_Crush_Settings {
                     <span class="description"><?php esc_html_e( '为已勾选但缺失的尺寸补生成缩略图；若开启了自动缩放且主图超过阈值，还会生成或修正 -scaled 缩放图。不会重建已存在的缩略图，纯缩略图缺失也不改动图片链接', 'local-crush' ); ?></span>
                 </td>
             </tr>
+            <tr>
+                <td style="padding: 10px 24px 10px 0;">
+                    <button type="button" class="button" id="local-crush-unlock-thumbnails" style="white-space: nowrap;">
+                        <?php esc_html_e( '解除所有不再生成缩略图锁定', 'local-crush' ); ?>
+                    </button>
+                </td>
+                <td style="padding: 10px 0;">
+                    <span class="description"><?php esc_html_e( '关闭所有图片详情里的“此图片不再生成缩略图”开关；只解除锁定，不会立刻生成缩略图，之后的补生成和重新生成会恢复正常', 'local-crush' ); ?></span>
+                </td>
+            </tr>
         </table>
 
         <?php
