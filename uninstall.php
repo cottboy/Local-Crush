@@ -30,9 +30,9 @@ delete_option( 'local_crush_tool_dirs' );
 delete_option( 'local_crush_db_version' );
 delete_option( 'local_crush_task' );
 
-// 删除插件写入的附件处理标记、格式转换映射和恢复中间状态；统一压缩记录已随数据表删除。
+// 删除插件写入的附件处理标记、格式转换映射、恢复中间状态和“不再生成缩略图”标记；统一压缩记录已随数据表删除。
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-$wpdb->query( "DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ('_local_crush_output', '_local_crush_restore_ready', '_local_crush_pending')" );
+$wpdb->query( "DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ('_local_crush_output', '_local_crush_restore_ready', '_local_crush_pending', '_local_crush_no_thumbnails')" );
 
 // 停用定时任务并清理限流 transient（钩子名需与 Local_Crush_Processor、Local_Crush_Task 常量保持一致）
 wp_clear_scheduled_hook( 'local_crush_pending_sweep_event' );

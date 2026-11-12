@@ -18,6 +18,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Local_Crush_Thumbnail_Manager {
 
     /**
+     * 单张图片“不再生成缩略图”标记的 meta 键
+     */
+    const SKIP_META_KEY = '_local_crush_no_thumbnails';
+
+    /**
      * 构造函数
      */
     public function __construct() {
@@ -72,7 +77,39 @@ class Local_Crush_Thumbnail_Manager {
     }
 
     /**
+     * 这张图片是否被单独设为不再生成缩略图
+     *
+     * @param int $attachment_id 附件 ID
+     * @return bool
+     */
+    public static function thumbnails_disabled_for_attachment( int $attachment_id ): bool {
+        return '1' === (string) get_post_meta( $attachment_id, self::SKIP_META_KEY, true );
+    }
+
+    /**
+     * 设置这张图片是否不再生成缩略图
+     *
+     * 只影响以后的生成，已有的缩略图一个都不动。
+     *
+     * @param int  $attachment_id 附件 ID
+     * @param bool $disabled      是否不再生成
+     * @return bool 是否写入成功
+     */
+    public function set_thumbnails_disabled( int $attachment_id, bool $disabled ): bool {
+        if ( $disabled ) {
+            update_post_meta( $attachment_id, self::SKIP_META_KEY, '1' );
+        } else {
+            delete_post_meta( $attachment_id, self::SKIP_META_KEY );
+        }
+
+        // update_post_meta 在值未变化时同样返回 false，一律以读回结果为准。
+        return self::thumbnails_disabled_for_attachment( $attachment_id ) === $disabled;
+    }
+
+    /**
      * 生成缩略图时剔除未勾选的尺寸
+     *
+     * 这张图片被单独设为不再生成时，连 WordPress 自己的尺寸也一起挡掉。
      *
      * @param array $sizes         待生成的尺寸
      * @param array $metadata      图片元数据
@@ -82,6 +119,10 @@ class Local_Crush_Thumbnail_Manager {
     public function filter_sizes_for_generation( $sizes, $metadata = array(), $attachment_id = 0 ) {
         if ( ! is_array( $sizes ) || empty( $sizes ) ) {
             return $sizes;
+        }
+
+        if ( $attachment_id && self::thumbnails_disabled_for_attachment( (int) $attachment_id ) ) {
+            return array();
         }
 
         foreach ( self::disabled_sizes() as $size_name ) {
@@ -117,6 +158,45 @@ class Local_Crush_Thumbnail_Manager {
      * @return array|null 计划结果；锁被占用或元数据写入失败时返回 null
      */
     public function delete_disabled_for_attachment( int $attachment_id ): ?array {
+        return $this->delete_thumbnails( $attachment_id, 'disabled' );
+    }
+
+    /**
+     * 删除单个附件里指定的缩略图尺寸
+     *
+     * 详情页每个尺寸右侧的删除按钮走这里：只删指定的尺寸，连带它的旧格式回退文件，
+     * -scaled 缩放图与主图一律不动。
+     *
+     * @param int      $attachment_id 附件 ID
+     * @param string[] $size_names    要删除的尺寸名
+     * @return array|null 计划结果；锁被占用或元数据写入失败时返回 null
+     */
+    public function delete_size_for_attachment( int $attachment_id, array $size_names ): ?array {
+        return $this->delete_thumbnails( $attachment_id, 'sizes', $size_names );
+    }
+
+    /**
+     * 删除单个附件的全部缩略图尺寸
+     *
+     * 连同 -scaled 缩放图一起删除，主图退回未缩放原图，只留下原始图与它自己的备份。
+     * 主图是 -scaled 但没有未缩放原图时保留 -scaled 图，否则主图就没了。
+     *
+     * @param int $attachment_id 附件 ID
+     * @return array|null 计划结果；锁被占用或元数据写入失败时返回 null
+     */
+    public function delete_all_for_attachment( int $attachment_id ): ?array {
+        return $this->delete_thumbnails( $attachment_id, 'all' );
+    }
+
+    /**
+     * 删除缩略图的统一实现
+     *
+     * @param int      $attachment_id 附件 ID
+     * @param string   $mode           disabled（按设置删未勾选）/ sizes（只删指定尺寸）/ all（删全部）
+     * @param string[] $size_names     mode 为 sizes 时要删的尺寸名
+     * @return array|null deleted、replaced、removed；锁被占用或元数据写入失败时返回 null
+     */
+    private function delete_thumbnails( int $attachment_id, string $mode, array $size_names = array() ): ?array {
         $lock = local_crush()->processor->acquire_attachment_lock( $attachment_id );
         if ( false === $lock ) {
             return null;
@@ -129,15 +209,21 @@ class Local_Crush_Thumbnail_Manager {
         }
 
         try {
-            // 先按当前缩放设置清理 -scaled 缩放图（与尺寸勾选无关）
-            $scaled = $this->cleanup_scaled( $attachment_id );
+            $deleted_base  = 0;
+            $replaced_base = 0;
 
-            if ( null === $scaled ) {
-                return null;
+            // 只删指定尺寸时完全不动 -scaled 缩放图：那是主图，与单个缩略图尺寸无关。
+            if ( 'sizes' !== $mode ) {
+                // 先按当前缩放设置清理 -scaled 缩放图（与尺寸勾选无关）；删全部时强制退回原图
+                $scaled = $this->cleanup_scaled( $attachment_id, 'all' === $mode );
+
+                if ( null === $scaled ) {
+                    return null;
+                }
+
+                $deleted_base  = (int) $scaled['deleted'];
+                $replaced_base = (int) $scaled['replaced'];
             }
-
-            $deleted_base  = (int) $scaled['deleted'];
-            $replaced_base = (int) $scaled['replaced'];
 
             $metadata = wp_get_attachment_metadata( $attachment_id );
 
@@ -145,6 +231,7 @@ class Local_Crush_Thumbnail_Manager {
                 return array(
                     'deleted'  => $deleted_base,
                     'replaced' => $replaced_base,
+                    'removed'  => 0,
                 );
             }
 
@@ -162,20 +249,21 @@ class Local_Crush_Thumbnail_Manager {
 
                 $path = $base_dir . '/' . $file_dir . '/' . $size_data['file'];
 
-                if ( ! file_exists( $path ) ) {
-                    continue;
-                }
-
                 $entry = array(
                     'file'   => $path,
                     'width'  => isset( $size_data['width'] ) ? (int) $size_data['width'] : 0,
                     'height' => isset( $size_data['height'] ) ? (int) $size_data['height'] : 0,
                 );
 
-                if ( self::is_size_enabled( $size_name ) ) {
-                    $kept[ $size_name ] = $entry;
-                } else {
+                if ( $this->is_delete_target( $mode, (string) $size_name, $size_names ) ) {
+                    // 文件已经不在的条目同样摘掉，否则明细里会永远挂着一条删不掉的“文件不存在”。
                     $victims[ $size_name ] = $entry;
+                    continue;
+                }
+
+                // 文件已不存在的保留尺寸不能当替代尺寸，链接指过去同样是坏的。
+                if ( file_exists( $path ) ) {
+                    $kept[ $size_name ] = $entry;
                 }
             }
 
@@ -183,6 +271,7 @@ class Local_Crush_Thumbnail_Manager {
                 return array(
                     'deleted'  => $deleted_base,
                     'replaced' => $replaced_base,
+                    'removed'  => 0,
                 );
             }
 
@@ -218,7 +307,9 @@ class Local_Crush_Thumbnail_Manager {
                     continue;
                 }
 
-                $deletions[ $size_name ] = $size_data['file'];
+                if ( file_exists( $size_data['file'] ) ) {
+                    $deletions[ $size_name ] = $size_data['file'];
+                }
 
                 $replacement = $this->nearest_replacement( $size_data, $kept );
 
@@ -260,12 +351,15 @@ class Local_Crush_Thumbnail_Manager {
                 return array(
                     'deleted'        => $deleted_base,
                     'replaced'       => $replaced_base + $replaced,
+                    'removed'        => 0,
                     'content_failed' => true,
                 );
             }
 
             // 元数据条目对全部被删尺寸一律摘除；共用文件的尺寸文件仍在，只是名册里去掉这一条。
-            foreach ( array_keys( $victims ) as $size_name ) {
+            $removed = array_keys( $victims );
+
+            foreach ( $removed as $size_name ) {
                 unset( $metadata['sizes'][ $size_name ] );
             }
 
@@ -306,6 +400,9 @@ class Local_Crush_Thumbnail_Manager {
                 if ( $record ) {
                     $database->delete_record( $record['id'] );
                 }
+
+                // 这个尺寸的文件都删了，转换映射也不再描述任何真实文件，一并清掉。
+                local_crush()->output_processor->remove_output_entry( $attachment_id, $size_name );
 
                 // 新格式删掉后，映射对应的旧格式缩略图也必须一起删掉。
                 if ( isset( $fallback_by_size[ $size_name ] ) ) {
@@ -362,11 +459,32 @@ class Local_Crush_Thumbnail_Manager {
             return array(
                 'deleted'  => $deleted_base + $deleted,
                 'replaced' => $replaced_base + $replaced,
+                'removed'  => count( $removed ),
             );
         } finally {
             local_crush()->processor->release_attachment_lock( $global_lock );
             local_crush()->processor->release_attachment_lock( $lock );
         }
+    }
+
+    /**
+     * 判断一个尺寸是不是这次要删的对象
+     *
+     * @param string   $mode       disabled / sizes / all
+     * @param string   $size_name  尺寸名
+     * @param string[] $size_names 指定要删的尺寸
+     * @return bool
+     */
+    private function is_delete_target( string $mode, string $size_name, array $size_names ): bool {
+        if ( 'all' === $mode ) {
+            return true;
+        }
+
+        if ( 'sizes' === $mode ) {
+            return in_array( $size_name, $size_names, true );
+        }
+
+        return ! self::is_size_enabled( $size_name );
     }
 
     /**
@@ -408,6 +526,11 @@ class Local_Crush_Thumbnail_Manager {
      * @return int|string|null 新增文件数；无需处理时返回原因字符串；失败返回 null
      */
     public function generate_missing_thumbnails( int $attachment_id ) {
+        // 这张图片被单独设为不再生成缩略图时，补生成也要挡住，不能绕过用户的选择。
+        if ( self::thumbnails_disabled_for_attachment( $attachment_id ) ) {
+            return 'disabled';
+        }
+
         return $this->generate_missing_for_attachment(
             $attachment_id,
             self::enabled_sizes(),
@@ -891,10 +1014,11 @@ class Local_Crush_Thumbnail_Manager {
      * 让主文件退回未缩放的原图，并同步元数据、正文链接和压缩记录。
      * 缩放图长边不超阈值（符合当前设置）时不动。调用前须已持有附件锁。
      *
-     * @param int $attachment_id 附件 ID
+     * @param int  $attachment_id 附件 ID
+     * @param bool $force         为 true 时不管缩放设置，只要有未缩放原图就退回（详情页“删除所有缩略图尺寸”用）
      * @return array|null deleted、replaced；处理失败返回 null
      */
-    private function cleanup_scaled( int $attachment_id ): ?array {
+    private function cleanup_scaled( int $attachment_id, bool $force = false ): ?array {
         $metadata = wp_get_attachment_metadata( $attachment_id );
 
         if ( ! is_array( $metadata ) || empty( $metadata['file'] ) ) {
@@ -917,8 +1041,8 @@ class Local_Crush_Thumbnail_Manager {
             return array( 'deleted' => 0, 'replaced' => 0 );
         }
 
-        // 关闭缩放，或缩放图长边超过阈值，才需要清理
-        $need_cleanup = ! $context['enabled'];
+        // 关闭缩放，或缩放图长边超过阈值，才需要清理；强制模式下无条件退回原图
+        $need_cleanup = $force ? true : ! $context['enabled'];
 
         if ( ! $need_cleanup ) {
             if ( ! is_file( $main_abs ) ) {
@@ -977,6 +1101,11 @@ class Local_Crush_Thumbnail_Manager {
             }
 
             $deleted = 1;
+
+            // 强制退回时缩放图不再有任何用处，它的旧格式副本也一并清掉。
+            if ( $force ) {
+                $deleted += $this->drop_scaled_fallback( $attachment_id, $main_abs, $orig_abs );
+            }
         }
 
         $metadata['file'] = $context['orig_rel'];
@@ -1001,6 +1130,63 @@ class Local_Crush_Thumbnail_Manager {
         $this->forget_main_records( $attachment_id );
 
         return array( 'deleted' => $deleted, 'replaced' => $replaced );
+    }
+
+    /**
+     * 删除缩放图自己的旧格式回退副本
+     *
+     * 缩放图马上要消失，它的旧格式副本再留着只是没人会加载的磁盘垃圾：
+     * 先把指向副本的链接改到退回后的主图，成功后才删文件和映射条目。
+     * 调用前须已持有附件锁。
+     *
+     * @param int    $attachment_id 附件 ID
+     * @param string $main_abs      被删掉的缩放图绝对路径
+     * @param string $orig_abs      退回后的主图绝对路径
+     * @return int 实际删掉的文件数
+     */
+    private function drop_scaled_fallback( int $attachment_id, string $main_abs, string $orig_abs ): int {
+        $deleted = 0;
+
+        foreach ( local_crush()->output_processor->get_output_entries( $attachment_id ) as $entry ) {
+            if ( 'full' !== (string) $entry['size_type'] || empty( $entry['from'] ) ) {
+                continue;
+            }
+
+            // 只认映射到刚被删掉的那份缩放图的条目，别误删别的东西。
+            if ( $this->normalized_path( (string) $entry['to'] ) !== $this->normalized_path( $main_abs ) ) {
+                continue;
+            }
+
+            $fallback = (string) $entry['from'];
+
+            if ( ! is_file( $fallback ) || is_link( $fallback ) || ! $this->is_safe_upload_path( $fallback )
+                || $this->normalized_path( $fallback ) === $this->normalized_path( $orig_abs ) ) {
+                continue;
+            }
+
+            // 链接改不过去就不动文件，免得正文里留下打不开的地址。
+            if ( ! local_crush()->references->update_references(
+                array(
+                    array(
+                        'from' => $fallback,
+                        'to'   => $orig_abs,
+                    ),
+                )
+            ) ) {
+                continue;
+            }
+
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+            if ( ! unlink( $fallback ) || file_exists( $fallback ) ) {
+                continue;
+            }
+
+            local_crush()->output_processor->remove_output_entry( $attachment_id, 'full' );
+            local_crush()->output_processor->forget_fallback_records( $attachment_id, array( 'full' ) );
+            $deleted++;
+        }
+
+        return $deleted;
     }
 
     /**

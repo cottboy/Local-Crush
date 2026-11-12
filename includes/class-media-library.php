@@ -39,6 +39,7 @@ class Local_Crush_Media_Library {
         add_action( 'wp_ajax_local_crush_restore', array( $this, 'ajax_restore' ) );
         add_action( 'wp_ajax_local_crush_delete_backup', array( $this, 'ajax_delete_backup' ) );
         add_action( 'wp_ajax_local_crush_delete_fallback', array( $this, 'ajax_delete_fallback' ) );
+        add_action( 'wp_ajax_local_crush_attachment_action', array( $this, 'ajax_attachment_action' ) );
     }
 
     /**
@@ -143,6 +144,83 @@ class Local_Crush_Media_Library {
 
             .local-crush-details-head h2 {
                 margin: 0;
+            }
+
+            /* 标题下面那排按钮：一行放不下自动换行，开关与按钮同高 */
+            .local-crush-details-toolbar {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 8px;
+                margin: -4px 0 14px;
+            }
+
+            .local-crush-details-toolbar .button {
+                margin: 0;
+            }
+
+            /* 闹钟式开关：轨道 + 滑块，整块可点 */
+            .local-crush-switch {
+                position: relative;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                cursor: pointer;
+                user-select: none;
+            }
+
+            .local-crush-switch input {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                opacity: 0;
+            }
+
+            .local-crush-switch-track {
+                position: relative;
+                flex: none;
+                width: 40px;
+                height: 22px;
+                background: #8c8f94;
+                border-radius: 11px;
+                transition: background .2s ease;
+            }
+
+            .local-crush-switch-thumb {
+                position: absolute;
+                top: 2px;
+                left: 2px;
+                width: 18px;
+                height: 18px;
+                background: #fff;
+                border-radius: 50%;
+                box-shadow: 0 1px 2px rgba( 0, 0, 0, .3 );
+                transition: transform .2s ease;
+            }
+
+            .local-crush-switch input:checked + .local-crush-switch-track {
+                background: #2271b1;
+            }
+
+            .local-crush-switch input:checked + .local-crush-switch-track .local-crush-switch-thumb {
+                transform: translateX( 18px );
+            }
+
+            .local-crush-switch input:focus + .local-crush-switch-track {
+                box-shadow: 0 0 0 2px #fff, 0 0 0 4px #2271b1;
+            }
+
+            .local-crush-switch input:disabled + .local-crush-switch-track {
+                opacity: .5;
+            }
+
+            .local-crush-details-table .local-crush-details-actions {
+                text-align: right;
+                white-space: nowrap;
+            }
+
+            .local-crush-details-table .local-crush-size-delete {
+                color: #b32d2e;
             }
 
             .local-crush-details-table {
@@ -463,6 +541,9 @@ class Local_Crush_Media_Library {
             wp_send_json_error( array( 'message' => __( '无法读取图片详情', 'local-crush' ) ) );
         }
 
+        // 详情页的开关状态：这张图片是否已设为不再生成缩略图
+        $details['thumbnails_disabled'] = Local_Crush_Thumbnail_Manager::thumbnails_disabled_for_attachment( $attachment_id );
+
         wp_send_json_success( $details );
     }
 
@@ -568,6 +649,152 @@ class Local_Crush_Media_Library {
         }
 
         wp_send_json_success( array( 'message' => __( '兼容格式回退已删除', 'local-crush' ) ) );
+    }
+
+    /**
+     * AJAX: 详情页的单图操作
+     *
+     * 详情页上新增的按钮全部走这一个入口，每个分支只做参数校验和结果播报，
+     * 真正的清理逻辑与批量操作、媒体库按钮共用同一套流程，不另写一份。
+     */
+    public function ajax_attachment_action() {
+        check_ajax_referer( 'local_crush_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => __( '权限不足', 'local-crush' ) ) );
+        }
+
+        $attachment_id = isset( $_POST['attachment_id'] ) ? absint( $_POST['attachment_id'] ) : 0;
+        if ( ! local_crush()->processor->is_valid_attachment( $attachment_id ) ) {
+            wp_send_json_error( array( 'message' => __( '无效的图片附件', 'local-crush' ) ) );
+        }
+
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce 已在上面校验过。
+        $operation = isset( $_POST['operation'] ) ? sanitize_key( wp_unslash( $_POST['operation'] ) ) : '';
+        $manager   = local_crush()->thumbnail_manager;
+
+        if ( 'set-no-thumbnails' === $operation ) {
+            // phpcs:ignore WordPress.Security.NonceVerification.Missing -- 同上。
+            $disabled = isset( $_POST['disabled'] ) && '1' === (string) absint( $_POST['disabled'] );
+
+            if ( ! $manager->set_thumbnails_disabled( $attachment_id, $disabled ) ) {
+                wp_send_json_error( array( 'message' => __( '设置保存失败，请重试', 'local-crush' ) ) );
+            }
+
+            wp_send_json_success(
+                array(
+                    'message'  => $disabled
+                        ? __( '已停止为这张图片生成缩略图', 'local-crush' )
+                        : __( '已恢复为这张图片生成缩略图', 'local-crush' ),
+                    'disabled' => $disabled,
+                )
+            );
+        }
+
+        // 每个分支都以 wp_send_json_* 收尾（它会直接结束请求），所以不需要 break。
+        switch ( $operation ) {
+            case 'delete-size':
+                // phpcs:ignore WordPress.Security.NonceVerification.Missing -- 同上。
+                $size_name = isset( $_POST['size'] ) ? sanitize_text_field( wp_unslash( $_POST['size'] ) ) : '';
+
+                if ( '' === $size_name ) {
+                    wp_send_json_error( array( 'message' => __( '无效的缩略图尺寸', 'local-crush' ) ) );
+                }
+
+                $result = $manager->delete_size_for_attachment( $attachment_id, array( $size_name ) );
+
+                if ( null === $result ) {
+                    wp_send_json_error( array( 'message' => __( '删除失败，这张图片正在被其他操作占用', 'local-crush' ) ) );
+                }
+
+                if ( ! empty( $result['content_failed'] ) ) {
+                    wp_send_json_error( array( 'message' => __( '图片链接替换失败，没有删除任何文件', 'local-crush' ) ) );
+                }
+
+                if ( empty( $result['deleted'] ) && empty( $result['removed'] ) ) {
+                    wp_send_json_error( array( 'message' => __( '没有可删除的缩略图尺寸', 'local-crush' ) ) );
+                }
+
+                wp_send_json_success( array( 'message' => __( '缩略图已删除', 'local-crush' ) ) );
+
+            case 'delete-all':
+                $result = $manager->delete_all_for_attachment( $attachment_id );
+
+                if ( null === $result ) {
+                    wp_send_json_error( array( 'message' => __( '删除失败，这张图片正在被其他操作占用', 'local-crush' ) ) );
+                }
+
+                if ( ! empty( $result['content_failed'] ) ) {
+                    wp_send_json_error( array( 'message' => __( '图片链接替换失败，没有删除任何文件', 'local-crush' ) ) );
+                }
+
+                if ( empty( $result['deleted'] ) && empty( $result['removed'] ) ) {
+                    wp_send_json_error( array( 'message' => __( '没有可删除的缩略图尺寸', 'local-crush' ) ) );
+                }
+
+                wp_send_json_success( array( 'message' => __( '这张图片的缩略图已全部删除', 'local-crush' ) ) );
+
+            case 'delete-disabled':
+                $result = $manager->delete_disabled_for_attachment( $attachment_id );
+
+                if ( null === $result ) {
+                    wp_send_json_error( array( 'message' => __( '删除失败，这张图片正在被其他操作占用', 'local-crush' ) ) );
+                }
+
+                if ( ! empty( $result['content_failed'] ) ) {
+                    wp_send_json_error( array( 'message' => __( '图片链接替换失败，没有删除任何文件', 'local-crush' ) ) );
+                }
+
+                if ( empty( $result['deleted'] ) && empty( $result['removed'] ) ) {
+                    wp_send_json_error( array( 'message' => __( '没有未勾选尺寸的缩略图需要删除', 'local-crush' ) ) );
+                }
+
+                wp_send_json_success( array( 'message' => __( '未勾选尺寸的缩略图已删除', 'local-crush' ) ) );
+
+            case 'delete-original':
+                $result = local_crush()->processor->delete_original_image( $attachment_id );
+
+                if ( ! empty( $result['failed'] ) ) {
+                    wp_send_json_error( array( 'message' => __( '删除失败', 'local-crush' ) ) );
+                }
+
+                if ( empty( $result['deleted_files'] ) ) {
+                    wp_send_json_error( array( 'message' => __( '没有可删除的未缩放原始大图', 'local-crush' ) ) );
+                }
+
+                wp_send_json_success( array( 'message' => __( '未缩放的原始大图已删除', 'local-crush' ) ) );
+
+            case 'generate-missing':
+                $result = $manager->generate_missing_thumbnails( $attachment_id );
+
+                if ( null === $result ) {
+                    wp_send_json_error( array( 'message' => __( '补生成失败', 'local-crush' ) ) );
+                }
+
+                if ( 'disabled' === $result ) {
+                    wp_send_json_error( array( 'message' => __( '这张图片已设为不再生成缩略图，先关掉开关再补生成', 'local-crush' ) ) );
+                }
+
+                if ( 'unsupported_format' === $result ) {
+                    wp_send_json_error( array( 'message' => __( '当前格式没有可用的原图，无法补生成缩略图', 'local-crush' ) ) );
+                }
+
+                if ( is_int( $result ) && $result > 0 ) {
+                    wp_send_json_success(
+                        array(
+                            'message' => sprintf(
+                                /* translators: %d: 新增缩略图数量 */
+                                __( '已补生成 %d 个缩略图', 'local-crush' ),
+                                (int) $result
+                            ),
+                        )
+                    );
+                }
+
+                wp_send_json_error( array( 'message' => __( '没有缺失的尺寸需要补生成', 'local-crush' ) ) );
+        }
+
+        wp_send_json_error( array( 'message' => __( '无法识别的操作', 'local-crush' ) ) );
     }
 
     /**

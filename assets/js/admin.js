@@ -23,6 +23,9 @@
         taskTimer: null,
         taskErrors: 0,
 
+        // 详情弹窗里是否删过文件：关弹窗时据此刷新媒体库，免得列表上的占用信息过期
+        detailsDirty: false,
+
         /**
          * 批量按钮与后台任务类型的对应关系
          */
@@ -52,6 +55,11 @@
 
             // 媒体库压缩/恢复按钮
             $(document).on('click', '.local-crush-btn', this.handleMediaLibraryAction.bind(this));
+
+            // 详情弹窗：尺寸右侧的删除按钮、标题下的操作按钮、单图开关
+            $(document).on('click', '.local-crush-size-delete', this.handleSizeDelete.bind(this));
+            $(document).on('click', '.local-crush-details-op', this.handleDetailsOperation.bind(this));
+            $(document).on('change', '.local-crush-switch input', this.handleNoThumbnailsSwitch.bind(this));
 
             // 批量按钮：只是把任务交给服务器，之后由面板显示进度
             $.each(this.batchButtons, function(selector, config) {
@@ -169,6 +177,16 @@
          * 显示单张图片的空间详情。
          */
         showDetails: function(attachmentId) {
+            this.detailsDirty = false;
+            this.refreshDetails(attachmentId);
+        },
+
+        /**
+         * 重新拉取并画出详情弹窗
+         *
+         * 详情页里的删除、补生成都改动了磁盘文件，操作完必须按最新情况重画一遍。
+         */
+        refreshDetails: function(attachmentId) {
             var self = this;
 
             $.ajax({
@@ -201,12 +219,20 @@
         },
 
         /**
+         * 转义要放进 HTML 属性的值（引号也要转，否则会撑破属性）
+         */
+        escapeAttr: function(value) {
+            return this.escapeHtml(value).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        },
+
+        /**
          * 渲染详情弹窗。
          */
         renderDetailsModal: function(details) {
             var self = this;
             var i18n = this.i18n;
             var rows = details.items || [];
+            var attachmentId = parseInt(details.attachment_id, 10) || 0;
             var html = '';
 
             html += '<div class="local-crush-details-modal" role="dialog" aria-modal="true">';
@@ -215,6 +241,20 @@
             html += '<h2>' + this.escapeHtml(i18n.detailsTitle) + '</h2>';
             html += '<button type="button" class="button-link local-crush-details-close">' + this.escapeHtml(i18n.detailsClose) + '</button>';
             html += '</div>';
+
+            // 标题下的整图操作：与设置页的批量按钮一一对应，只是只作用于这一张图
+            html += '<div class="local-crush-details-toolbar">';
+            html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-original" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnDeleteOriginal) + '</button>';
+            html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-disabled" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnDeleteDisabled) + '</button>';
+            html += '<button type="button" class="button button-small local-crush-details-op" data-operation="generate-missing" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnGenerateMissing) + '</button>';
+            html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-all" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnDeleteAllSizes) + '</button>';
+            html += '<label class="local-crush-switch">';
+            html += '<input type="checkbox" data-attachment-id="' + attachmentId + '"' + (details.thumbnails_disabled ? ' checked' : '') + '>';
+            html += '<span class="local-crush-switch-track"><span class="local-crush-switch-thumb"></span></span>';
+            html += '<span class="local-crush-switch-text">' + this.escapeHtml(i18n.toggleNoThumbnails) + '</span>';
+            html += '</label>';
+            html += '</div>';
+
             html += '<table class="local-crush-details-table"><thead><tr>';
             html += '<th>' + this.escapeHtml(i18n.detailsGroup) + '</th>';
             html += '<th>' + this.escapeHtml(i18n.detailsItem) + '</th>';
@@ -223,12 +263,17 @@
             html += '<th>' + this.escapeHtml(i18n.detailsOriginalFileSize) + '</th>';
             html += '<th>' + this.escapeHtml(i18n.detailsCurrentSize) + '</th>';
             html += '<th>' + this.escapeHtml(i18n.detailsSavedSize) + '</th>';
+            html += '<th>' + this.escapeHtml(i18n.detailsActions) + '</th>';
             html += '</tr></thead><tbody>';
 
             if (!rows.length) {
-                html += '<tr><td colspan="7">' + this.escapeHtml(i18n.detailsEmpty) + '</td></tr>';
+                html += '<tr><td colspan="8">' + this.escapeHtml(i18n.detailsEmpty) + '</td></tr>';
             } else {
                 $.each(rows, function(index, row) {
+                    // 只有缩略图尺寸本身给删除按钮：主图、未缩放原图和备份都不能按尺寸删，
+                    // 旧格式回退与它的新格式同属一个尺寸，删一个就一起删，不用重复给按钮
+                    var isSize = !row.is_fallback && row.size_type !== 'full' && row.size_type !== 'original_image' && row.size_type !== 'backup';
+
                     html += '<tr>';
                     html += '<td>' + self.escapeHtml(row.group) + '</td>';
                     html += '<td>' + self.escapeHtml(row.name);
@@ -241,6 +286,18 @@
                     html += '<td>' + self.escapeHtml(self.formatBytes(row.original_size)) + '</td>';
                     html += '<td>' + self.escapeHtml(self.formatBytes(row.current_size)) + '</td>';
                     html += '<td>' + self.escapeHtml(self.formatBytes(row.saved_size)) + '</td>';
+                    html += '<td class="local-crush-details-actions">';
+
+                    if (isSize) {
+                        html += '<button type="button" class="button-link button-link-delete local-crush-size-delete"'
+                            + ' data-attachment-id="' + attachmentId + '"'
+                            + ' data-size="' + self.escapeAttr(row.size_type) + '"'
+                            + ' data-label="' + self.escapeAttr(row.name) + '">'
+                            + self.escapeHtml(i18n.detailsDelete)
+                            + '</button>';
+                    }
+
+                    html += '</td>';
                     html += '</tr>';
                 });
             }
@@ -255,6 +312,12 @@
             function closeModal() {
                 $modal.remove();
                 $(document).off('keydown.localCrushDetails');
+
+                // 删过文件就刷新列表，让“占用”和压缩状态跟上磁盘的实际情况
+                if (self.detailsDirty) {
+                    self.detailsDirty = false;
+                    location.reload();
+                }
             }
 
             $modal.on('click', function(e) {
@@ -265,6 +328,150 @@
             $(document).off('keydown.localCrushDetails').on('keydown.localCrushDetails', function(e) {
                 if (e.key === 'Escape') {
                     closeModal();
+                }
+            });
+        },
+
+        /**
+         * 删除某一行的缩略图尺寸
+         */
+        handleSizeDelete: function(e) {
+            e.preventDefault();
+
+            var $btn = $(e.currentTarget);
+            var attachmentId = parseInt($btn.attr('data-attachment-id'), 10) || 0;
+            var sizeName = $btn.attr('data-size');
+            var label = $btn.attr('data-label');
+
+            if (!attachmentId || !sizeName) {
+                return;
+            }
+
+            this.runDetailsAction(
+                attachmentId,
+                { operation: 'delete-size', size: sizeName },
+                this.i18n.confirmDeleteSize.replace('%s', label || sizeName),
+                $btn
+            );
+        },
+
+        /**
+         * 详情弹窗标题下的整图操作
+         */
+        handleDetailsOperation: function(e) {
+            e.preventDefault();
+
+            var $btn = $(e.currentTarget);
+            var attachmentId = parseInt($btn.attr('data-attachment-id'), 10) || 0;
+            var operation = $btn.attr('data-operation');
+
+            if (!attachmentId) {
+                return;
+            }
+
+            // 补生成不是删除，不问；其它三个都动磁盘文件，先让用户确认
+            var confirmText = '';
+
+            if (operation === 'delete-original') {
+                confirmText = this.i18n.confirmDeleteOriginalSingle;
+            } else if (operation === 'delete-disabled') {
+                confirmText = this.i18n.confirmDeleteDisabledSingle;
+            } else if (operation === 'delete-all') {
+                confirmText = this.i18n.confirmDeleteAllSizes;
+            }
+
+            this.runDetailsAction(attachmentId, { operation: operation }, confirmText, $btn);
+        },
+
+        /**
+         * 单图开关：这张图片以后还生不生成缩略图
+         */
+        handleNoThumbnailsSwitch: function(e) {
+            var self = this;
+            var $input = $(e.currentTarget);
+            var attachmentId = parseInt($input.attr('data-attachment-id'), 10) || 0;
+            var disabled = $input.is(':checked');
+
+            if (!attachmentId) {
+                return;
+            }
+
+            $input.prop('disabled', true);
+
+            $.ajax({
+                url: this.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'local_crush_attachment_action',
+                    nonce: this.nonce,
+                    attachment_id: attachmentId,
+                    operation: 'set-no-thumbnails',
+                    disabled: disabled ? 1 : 0
+                },
+                success: function(response) {
+                    if (!response.success) {
+                        alert((response.data && response.data.message) || self.i18n.error);
+                        // 没保存成功就把开关拨回原位，别让界面显示错的状态
+                        $input.prop('checked', !disabled);
+                    }
+
+                    $input.prop('disabled', false);
+                },
+                error: function() {
+                    alert(self.i18n.error);
+                    $input.prop('checked', !disabled).prop('disabled', false);
+                }
+            });
+        },
+
+        /**
+         * 详情弹窗里的单图操作统一走这里
+         *
+         * 服务端只认操作名和附件 ID，这里只负责确认、发请求、重画弹窗。
+         */
+        runDetailsAction: function(attachmentId, data, confirmText, $btn) {
+            var self = this;
+            var request = $.extend(
+                {
+                    action: 'local_crush_attachment_action',
+                    nonce: this.nonce,
+                    attachment_id: attachmentId
+                },
+                data
+            );
+
+            if (confirmText && !confirm(confirmText)) {
+                return;
+            }
+
+            if ($btn && $btn.length) {
+                $btn.prop('disabled', true);
+            }
+
+            $.ajax({
+                url: this.ajaxUrl,
+                type: 'POST',
+                timeout: 120000,
+                data: request,
+                success: function(response) {
+                    if (!response.success) {
+                        alert((response.data && response.data.message) || self.i18n.error);
+
+                        if ($btn && $btn.length) {
+                            $btn.prop('disabled', false);
+                        }
+                        return;
+                    }
+
+                    self.detailsDirty = true;
+                    self.refreshDetails(attachmentId);
+                },
+                error: function() {
+                    alert(self.i18n.error);
+
+                    if ($btn && $btn.length) {
+                        $btn.prop('disabled', false);
+                    }
                 }
             });
         },
