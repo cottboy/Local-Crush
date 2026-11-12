@@ -244,8 +244,8 @@
 
             // 标题下的整图操作：作用范围是整张图片，逐行的删除按钮只管对应的那一份文件
             html += '<div class="local-crush-details-toolbar">';
-            html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-disabled" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnDeleteDisabled) + '</button>';
             html += '<button type="button" class="button button-small local-crush-details-op" data-operation="generate-missing" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnGenerateMissing) + '</button>';
+            html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-disabled" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnDeleteDisabled) + '</button>';
             html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-all" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnDeleteAllSizes) + '</button>';
             html += '<label class="local-crush-switch">';
             html += '<input type="checkbox" data-attachment-id="' + attachmentId + '"' + (details.thumbnails_disabled ? ' checked' : '') + '>';
