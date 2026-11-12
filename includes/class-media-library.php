@@ -778,6 +778,28 @@ class Local_Crush_Media_Library {
 
                 wp_send_json_success( array( 'message' => __( '未勾选尺寸的缩略图已删除', 'local-crush' ) ) );
 
+            case 'delete-backup':
+                $result = local_crush()->processor->delete_attachment_backups( $attachment_id );
+
+                if ( empty( $result['ok'] ) ) {
+                    wp_send_json_error( array( 'message' => __( '删除失败', 'local-crush' ) ) );
+                }
+
+                wp_send_json_success( array( 'message' => __( '备份已删除', 'local-crush' ) ) );
+
+            case 'delete-scaled-main':
+                $result = $manager->delete_scaled_main( $attachment_id );
+
+                if ( null === $result ) {
+                    wp_send_json_error( array( 'message' => __( '删除失败，这张图片正在被其他操作占用', 'local-crush' ) ) );
+                }
+
+                if ( empty( $result['deleted'] ) ) {
+                    wp_send_json_error( array( 'message' => __( '这张图片的主图不是 -scaled 缩放图，或未缩放原图已不存在', 'local-crush' ) ) );
+                }
+
+                wp_send_json_success( array( 'message' => __( '-scaled 缩放图已删除，主图已退回未缩放原图', 'local-crush' ) ) );
+
             case 'delete-original':
                 $result = local_crush()->processor->delete_original_image( $attachment_id );
 

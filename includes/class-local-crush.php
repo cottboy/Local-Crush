@@ -280,6 +280,7 @@ class Local_Crush {
                     'confirmGenerateThumbnails' => __( '确定要为已勾选但缺失的尺寸补生成缩略图吗？开启了自动缩放且主图超过阈值时，还会生成或修正 -scaled 缩放图。这可能需要一些时间。', 'local-crush' ),
                     'confirmUnlockThumbnails' => __( '确定要关闭所有图片的“此图片不再生成缩略图”开关吗？只解除锁定，不会立刻生成缩略图，之后的补生成和重新生成会恢复正常。', 'local-crush' ),
                     'confirmDeleteBackup'     => __( '确定要删除此图片的备份吗？删除后将无法恢复原图。', 'local-crush' ),
+                    'confirmDeleteScaledMain' => __( '确定要删除这张图片的 -scaled 缩放图吗？主图会退回未缩放的原始大图，全站指向缩放图的链接会改到原图，此操作不可撤销。', 'local-crush' ),
                     'confirmDeleteAllBackups' => __( '确定要删除所有原图备份吗？删除后将无法恢复原图。', 'local-crush' ),
                     'confirmDeleteFallback'   => __( '确定要删除此图片的兼容格式回退吗？删除后不支持新格式的浏览器将直接加载新格式图片，此操作不可撤销。', 'local-crush' ),
                     'confirmDeleteAllFallbacks' => __( '确定要删除所有兼容格式回退吗？删除后不支持新格式的浏览器将直接加载新格式图片，此操作不可撤销。', 'local-crush' ),

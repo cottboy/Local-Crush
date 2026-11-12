@@ -199,6 +199,37 @@ class Local_Crush_Thumbnail_Manager {
     }
 
     /**
+     * 删除 -scaled 缩放图，让主图退回未缩放原图
+     *
+     * 只处理主图确实是缩放图、未缩放原图还在的情况；缩略图尺寸一个都不动。
+     * 缩放图自己的旧格式回退副本一并清掉，与删除单个尺寸的行为一致。
+     *
+     * @param int $attachment_id 附件 ID
+     * @return array|null deleted、replaced；锁被占用或失败时返回 null
+     */
+    public function delete_scaled_main( int $attachment_id ): ?array {
+        $lock = local_crush()->processor->acquire_attachment_lock( $attachment_id );
+
+        if ( false === $lock ) {
+            return null;
+        }
+
+        $global_lock = local_crush()->processor->acquire_global_lock( false );
+
+        if ( false === $global_lock ) {
+            local_crush()->processor->release_attachment_lock( $lock );
+            return null;
+        }
+
+        try {
+            return $this->cleanup_scaled( $attachment_id, true );
+        } finally {
+            local_crush()->processor->release_attachment_lock( $global_lock );
+            local_crush()->processor->release_attachment_lock( $lock );
+        }
+    }
+
+    /**
      * 删除缩略图的统一实现
      *
      * @param int      $attachment_id 附件 ID

@@ -329,6 +329,8 @@ class Local_Crush_Processor {
             $item_saved        = $complete ? max( 0, $item_original - $record_compressed ) : 0;
             $size_type         = isset( $file['size_type'] ) ? (string) $file['size_type'] : 'full';
             $is_fallback       = ! empty( $file['is_fallback'] );
+            // 主图是 -scaled 缩放图时才允许按行删除：删掉它，主图退回未缩放原图
+            $is_scaled_main    = ! $is_fallback && 'full' === $size_type && ! empty( $metadata['original_image'] );
 
             if ( $exists ) {
                 $normalized_path = wp_normalize_path( $path );
@@ -349,6 +351,7 @@ class Local_Crush_Processor {
                 'saved_size'    => $item_saved,
                 'file_name'     => '' !== $path ? wp_basename( $path ) : '',
                 'is_fallback'   => $is_fallback,
+                'scaled_main'   => $is_scaled_main,
             );
         }
 

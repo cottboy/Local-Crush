@@ -270,15 +270,20 @@
                 html += '<tr><td colspan="8">' + this.escapeHtml(i18n.detailsEmpty) + '</td></tr>';
             } else {
                 $.each(rows, function(index, row) {
-                    // 主图和原图备份不能删；缩略图尺寸、未缩放原图、旧兼容格式各行都能单独删。
+                    // 普通主图不能删；主图是 -scaled 缩放图时可以删，删了主图退回未缩放原图。
+                    // 原图备份、缩略图尺寸、未缩放原图、旧兼容格式各行都能单独删；
                     // 旧兼容格式只删自己那一份，新格式留着。
-                    var canDelete = row.size_type !== 'backup' && (row.is_fallback || row.size_type !== 'full');
+                    var canDelete = row.is_fallback || row.scaled_main || row.size_type !== 'full';
                     var rowOperation = 'delete-size';
 
-                    if (row.is_fallback) {
+                    if (row.size_type === 'backup') {
+                        rowOperation = 'delete-backup';
+                    } else if (row.is_fallback) {
                         rowOperation = 'delete-fallback-size';
                     } else if (row.size_type === 'original_image') {
                         rowOperation = 'delete-original';
+                    } else if (row.scaled_main) {
+                        rowOperation = 'delete-scaled-main';
                     }
 
                     html += '<tr>';
@@ -365,6 +370,10 @@
                 confirmText = this.i18n.confirmDeleteFallbackSize.replace('%s', label || sizeName);
             } else if (operation === 'delete-original') {
                 confirmText = this.i18n.confirmDeleteOriginalSingle;
+            } else if (operation === 'delete-backup') {
+                confirmText = this.i18n.confirmDeleteBackup;
+            } else if (operation === 'delete-scaled-main') {
+                confirmText = this.i18n.confirmDeleteScaledMain;
             }
 
             this.runDetailsAction(attachmentId, { operation: operation, size: sizeName }, confirmText, $btn);
