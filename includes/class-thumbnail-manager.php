@@ -1364,7 +1364,7 @@ class Local_Crush_Thumbnail_Manager {
         // 原图缩，文件名各按自己的文件名规则算，前台去掉扩展名就能找到对应的旧格式回退。
         $legacy_source     = $this->find_legacy_original_source( $attachment_id, $metadata );
         $legacy_abs        = null !== $legacy_source ? wp_normalize_path( (string) $legacy_source['path'] ) : '';
-        $legacy_scaled_abs = '' !== $legacy_abs ? local_crush()->processor->scaled_file_path( $legacy_abs ) : '';
+        $legacy_scaled_abs = '' !== $legacy_abs ? local_crush()->processor->scaled_file_path( $attachment_id, $legacy_abs ) : '';
 
         // 已有缩放图且长边不超阈值（符合当前设置），不用重建；超过则等新图生成成功后再删旧的
         $remove_main = false;
@@ -1385,7 +1385,7 @@ class Local_Crush_Thumbnail_Manager {
         $legacy_scaled_existed = '' !== $legacy_scaled_abs && is_file( $legacy_scaled_abs );
 
         if ( '' !== $legacy_scaled_abs ) {
-            $legacy_scaled = local_crush()->processor->generate_scaled_file( $legacy_abs, $context['threshold'] );
+            $legacy_scaled = local_crush()->processor->generate_scaled_file( $attachment_id, $legacy_abs, $context['threshold'] );
 
             if ( ! is_array( $legacy_scaled ) || empty( $legacy_scaled['path'] ) || ! is_file( $legacy_scaled['path'] ) ) {
                 return null;
@@ -1394,7 +1394,7 @@ class Local_Crush_Thumbnail_Manager {
             $legacy_scaled_abs = wp_normalize_path( (string) $legacy_scaled['path'] );
         }
 
-        $scaled = local_crush()->processor->generate_scaled_file( $source_abs, $context['threshold'] );
+        $scaled = local_crush()->processor->generate_scaled_file( $attachment_id, $source_abs, $context['threshold'] );
 
         if ( ! is_array( $scaled ) || empty( $scaled['path'] ) || ! is_file( $scaled['path'] ) ) {
             $this->discard_scaled_fallback( $legacy_scaled_abs, $legacy_scaled_existed );

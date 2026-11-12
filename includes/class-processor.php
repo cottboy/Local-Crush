@@ -1139,14 +1139,15 @@ class Local_Crush_Processor {
     /**
      * 算出缩放图应保存的路径
      *
-     * 插件转换后的文件名是“原名 + .新格式”，缩放标记必须插在原名自己的扩展名前：
-     * photo.jpg.webp → photo-scaled.jpg.webp，没转换过的 photo.jpg → photo-scaled.jpg。
-     * 只看文件名结构，不看旧格式回退在不在，所以关掉回退的转换图也不会算错。
+     * 插件转换后的文件名是“原名 + .新格式”，缩放标记要插在原名自己的扩展名前：
+     * photo.jpg.webp → photo-scaled.jpg.webp。只有转换映射里确实指着这个文件时才这样算，
+     * 光看双扩展名不够——直接上传的 a.b.webp 不是转换产物，仍按最后一段扩展名处理。
      *
-     * @param string $source_path 未缩放的源文件绝对路径
+     * @param int    $attachment_id 附件 ID
+     * @param string $source_path   未缩放的源文件绝对路径
      * @return string 没有扩展名时返回空字符串
      */
-    public function scaled_file_path( string $source_path ): string {
+    public function scaled_file_path( int $attachment_id, string $source_path ): string {
         $source_path = wp_normalize_path( $source_path );
         $name        = wp_basename( $source_path );
         $extension   = strtolower( pathinfo( $name, PATHINFO_EXTENSION ) );
@@ -1158,9 +1159,8 @@ class Local_Crush_Processor {
         $directory = dirname( $source_path );
         $stem      = substr( $name, 0, strlen( $name ) - strlen( $extension ) - 1 );
 
-        // 双扩展名说明前面那段是旧格式原文件名，缩放标记插在旧格式扩展名前，
-        // 这样前台去掉最后一段扩展名就能还原出旧格式缩放图。
-        if ( in_array( $extension, array( 'webp', 'avif', 'jxl' ), true ) ) {
+        if ( in_array( $extension, array( 'webp', 'avif', 'jxl' ), true )
+            && local_crush()->output_processor->is_conversion_output( $attachment_id, $source_path ) ) {
             $legacy_extension = strtolower( pathinfo( $stem, PATHINFO_EXTENSION ) );
 
             if ( '' !== $legacy_extension ) {
@@ -1179,11 +1179,12 @@ class Local_Crush_Processor {
      * 与核心上传流程一致：resize 到阈值内、按 EXIF 方向旋转、另存为 xxx-scaled 文件。
      * 文件名统一由 scaled_file_path 计算；目标必须与源文件不同，否则会覆盖未缩放源文件。
      *
-     * @param string $source_path 未缩放的源文件绝对路径
-     * @param int    $threshold   阈值（像素）
+     * @param int    $attachment_id 附件 ID
+     * @param string $source_path   未缩放的源文件绝对路径
+     * @param int    $threshold     阈值（像素）
      * @return array|null 图片编辑器保存结果；失败或目标与源相同时返回 null
      */
-    public function generate_scaled_file( string $source_path, int $threshold ): ?array {
+    public function generate_scaled_file( int $attachment_id, string $source_path, int $threshold ): ?array {
         $editor = wp_get_image_editor( $source_path );
 
         if ( is_wp_error( $editor ) ) {
@@ -1203,7 +1204,7 @@ class Local_Crush_Processor {
             return null;
         }
 
-        $target = $this->scaled_file_path( $source_path );
+        $target = $this->scaled_file_path( $attachment_id, $source_path );
 
         if ( '' === $target ) {
             return null;
