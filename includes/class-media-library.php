@@ -219,10 +219,6 @@ class Local_Crush_Media_Library {
                 box-shadow: 0 0 0 2px #fff, 0 0 0 4px #2271b1;
             }
 
-            .local-crush-switch input:disabled + .local-crush-switch-track {
-                opacity: .5;
-            }
-
             .local-crush-details-table .local-crush-details-actions {
                 text-align: right;
                 white-space: nowrap;
