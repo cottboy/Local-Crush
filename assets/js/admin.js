@@ -242,9 +242,8 @@
             html += '<button type="button" class="button-link local-crush-details-close">' + this.escapeHtml(i18n.detailsClose) + '</button>';
             html += '</div>';
 
-            // 标题下的整图操作：与设置页的批量按钮一一对应，只是只作用于这一张图
+            // 标题下的整图操作：作用范围是整张图片，逐行的删除按钮只管对应的那一份文件
             html += '<div class="local-crush-details-toolbar">';
-            html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-original" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnDeleteOriginal) + '</button>';
             html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-disabled" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnDeleteDisabled) + '</button>';
             html += '<button type="button" class="button button-small local-crush-details-op" data-operation="generate-missing" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnGenerateMissing) + '</button>';
             html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-all" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnDeleteAllSizes) + '</button>';
@@ -270,10 +269,16 @@
                 html += '<tr><td colspan="8">' + this.escapeHtml(i18n.detailsEmpty) + '</td></tr>';
             } else {
                 $.each(rows, function(index, row) {
-                    // 主图、未缩放原图和备份不是缩略图尺寸，没有删除按钮。
-                    // 旧格式那一行也有按钮，但它只删自己这一份，新格式留着。
-                    var isSize = row.size_type !== 'full' && row.size_type !== 'original_image' && row.size_type !== 'backup';
-                    var rowOperation = row.is_fallback ? 'delete-fallback-size' : 'delete-size';
+                    // 主图和原图备份不能删；缩略图尺寸、未缩放原图、旧兼容格式各行都能单独删。
+                    // 旧兼容格式只删自己那一份，新格式留着。
+                    var canDelete = row.size_type !== 'backup' && (row.is_fallback || row.size_type !== 'full');
+                    var rowOperation = 'delete-size';
+
+                    if (row.is_fallback) {
+                        rowOperation = 'delete-fallback-size';
+                    } else if (row.size_type === 'original_image') {
+                        rowOperation = 'delete-original';
+                    }
 
                     html += '<tr>';
                     html += '<td>' + self.escapeHtml(row.group) + '</td>';
@@ -289,7 +294,7 @@
                     html += '<td>' + self.escapeHtml(self.formatBytes(row.saved_size)) + '</td>';
                     html += '<td class="local-crush-details-actions">';
 
-                    if (isSize) {
+                    if (canDelete) {
                         html += '<button type="button" class="button-link button-link-delete local-crush-size-delete"'
                             + ' data-attachment-id="' + attachmentId + '"'
                             + ' data-operation="' + rowOperation + '"'
@@ -337,7 +342,8 @@
         /**
          * 删除某一行的图片
          *
-         * 当前格式那行删整个尺寸（旧格式一起没了）；旧格式那行只删自己那一份。
+         * 当前格式的缩略图那行删整个尺寸（旧格式一起没了）；未缩放原图那行删这份原图；
+         * 旧格式那行只删自己那一份。
          */
         handleSizeDelete: function(e) {
             e.preventDefault();
@@ -356,6 +362,8 @@
 
             if (operation === 'delete-fallback-size') {
                 confirmText = this.i18n.confirmDeleteFallbackSize.replace('%s', label || sizeName);
+            } else if (operation === 'delete-original') {
+                confirmText = this.i18n.confirmDeleteOriginalSingle;
             }
 
             this.runDetailsAction(attachmentId, { operation: operation, size: sizeName }, confirmText, $btn);
@@ -375,12 +383,10 @@
                 return;
             }
 
-            // 补生成不是删除，不问；其它三个都动磁盘文件，先让用户确认
+            // 补生成不是删除，不问；删除未勾选尺寸和删除全部尺寸都动磁盘文件，先让用户确认
             var confirmText = '';
 
-            if (operation === 'delete-original') {
-                confirmText = this.i18n.confirmDeleteOriginalSingle;
-            } else if (operation === 'delete-disabled') {
+            if (operation === 'delete-disabled') {
                 confirmText = this.i18n.confirmDeleteDisabledSingle;
             } else if (operation === 'delete-all') {
                 confirmText = this.i18n.confirmDeleteAllSizes;

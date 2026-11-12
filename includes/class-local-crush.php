@@ -263,7 +263,6 @@ class Local_Crush {
                     'detailsEmpty'            => __( '没有可显示的文件', 'local-crush' ),
                     'detailsActions'          => __( '操作', 'local-crush' ),
                     'detailsDelete'           => __( '删除', 'local-crush' ),
-                    'btnDeleteOriginal'       => __( '删除未缩放的原始大图', 'local-crush' ),
                     'btnDeleteDisabled'       => __( '删除未勾选尺寸的缩略图', 'local-crush' ),
                     'btnGenerateMissing'      => __( '补生成缺失尺寸的缩略图', 'local-crush' ),
                     'btnDeleteAllSizes'       => __( '删除所有缩略图尺寸', 'local-crush' ),
