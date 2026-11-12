@@ -36,8 +36,8 @@ class Local_Crush_Thumbnail_Manager {
         // 按设置跳过未勾选的缩略图尺寸
         add_filter( 'intermediate_image_sizes_advanced', array( $this, 'filter_sizes_for_generation' ), 10, 3 );
 
-        // 按设置调整大图缩放阈值
-        add_filter( 'big_image_size_threshold', array( $this, 'filter_big_image_size_threshold' ) );
+        // 按设置调整大图缩放阈值；单图开关也要在这里拦住 -scaled 缩放图
+        add_filter( 'big_image_size_threshold', array( $this, 'filter_big_image_size_threshold' ), 10, 4 );
     }
 
     /**
@@ -139,10 +139,20 @@ class Local_Crush_Thumbnail_Manager {
      * 勾选自动缩放时返回设定阈值，未勾选时返回 0——0 与 false 一样会被核心
      * 当作“不缩放”处理，上传的大图直接作为主文件投入使用。
      *
-     * @param int|false $threshold WordPress 当前阈值
-     * @return int 开启自动缩放时为设定阈值，关闭时为 0
+     * 这张图片被单独设为不再生成缩略图时也返回 0：用户要的就是“以后别再给我
+     * 造 -scaled”，否则删掉缩放图以后，随便一次重新生成又会把它造回来。
+     *
+     * @param int|false $threshold     WordPress 当前阈值
+     * @param array     $imagesize     图片尺寸信息
+     * @param string    $file          文件路径
+     * @param int       $attachment_id 附件 ID
+     * @return int 开启自动缩放时为设定阈值，关闭或单图停用时为 0
      */
-    public function filter_big_image_size_threshold( $threshold ) {
+    public function filter_big_image_size_threshold( $threshold, $imagesize = array(), $file = '', $attachment_id = 0 ) {
+        if ( $attachment_id && self::thumbnails_disabled_for_attachment( (int) $attachment_id ) ) {
+            return 0;
+        }
+
         return Local_Crush_Settings::image_scale_enabled()
             ? Local_Crush_Settings::image_size_threshold()
             : 0;

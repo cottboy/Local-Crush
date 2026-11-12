@@ -717,6 +717,26 @@ class Local_Crush_Media_Library {
 
                 wp_send_json_success( array( 'message' => __( '缩略图已删除', 'local-crush' ) ) );
 
+            case 'delete-fallback-size':
+                // phpcs:ignore WordPress.Security.NonceVerification.Missing -- 同上。
+                $size_name = isset( $_POST['size'] ) ? sanitize_text_field( wp_unslash( $_POST['size'] ) ) : '';
+
+                if ( '' === $size_name ) {
+                    wp_send_json_error( array( 'message' => __( '无效的缩略图尺寸', 'local-crush' ) ) );
+                }
+
+                $result = local_crush()->processor->delete_fallback( $attachment_id, array( $size_name ) );
+
+                if ( ! empty( $result['failed'] ) ) {
+                    wp_send_json_error( array( 'message' => __( '删除失败', 'local-crush' ) ) );
+                }
+
+                if ( empty( $result['deleted_files'] ) ) {
+                    wp_send_json_error( array( 'message' => __( '没有可删除的兼容格式回退', 'local-crush' ) ) );
+                }
+
+                wp_send_json_success( array( 'message' => __( '旧格式图片已删除', 'local-crush' ) ) );
+
             case 'delete-all':
                 $result = $manager->delete_all_for_attachment( $attachment_id );
 

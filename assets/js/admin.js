@@ -270,9 +270,10 @@
                 html += '<tr><td colspan="8">' + this.escapeHtml(i18n.detailsEmpty) + '</td></tr>';
             } else {
                 $.each(rows, function(index, row) {
-                    // 只有缩略图尺寸本身给删除按钮：主图、未缩放原图和备份都不能按尺寸删，
-                    // 旧格式回退与它的新格式同属一个尺寸，删一个就一起删，不用重复给按钮
-                    var isSize = !row.is_fallback && row.size_type !== 'full' && row.size_type !== 'original_image' && row.size_type !== 'backup';
+                    // 主图、未缩放原图和备份不是缩略图尺寸，没有删除按钮。
+                    // 旧格式那一行也有按钮，但它只删自己这一份，新格式留着。
+                    var isSize = row.size_type !== 'full' && row.size_type !== 'original_image' && row.size_type !== 'backup';
+                    var rowOperation = row.is_fallback ? 'delete-fallback-size' : 'delete-size';
 
                     html += '<tr>';
                     html += '<td>' + self.escapeHtml(row.group) + '</td>';
@@ -291,6 +292,7 @@
                     if (isSize) {
                         html += '<button type="button" class="button-link button-link-delete local-crush-size-delete"'
                             + ' data-attachment-id="' + attachmentId + '"'
+                            + ' data-operation="' + rowOperation + '"'
                             + ' data-size="' + self.escapeAttr(row.size_type) + '"'
                             + ' data-label="' + self.escapeAttr(row.name) + '">'
                             + self.escapeHtml(i18n.detailsDelete)
@@ -333,7 +335,9 @@
         },
 
         /**
-         * 删除某一行的缩略图尺寸
+         * 删除某一行的图片
+         *
+         * 当前格式那行删整个尺寸（旧格式一起没了）；旧格式那行只删自己那一份。
          */
         handleSizeDelete: function(e) {
             e.preventDefault();
@@ -342,17 +346,19 @@
             var attachmentId = parseInt($btn.attr('data-attachment-id'), 10) || 0;
             var sizeName = $btn.attr('data-size');
             var label = $btn.attr('data-label');
+            var operation = $btn.attr('data-operation') || 'delete-size';
 
             if (!attachmentId || !sizeName) {
                 return;
             }
 
-            this.runDetailsAction(
-                attachmentId,
-                { operation: 'delete-size', size: sizeName },
-                this.i18n.confirmDeleteSize.replace('%s', label || sizeName),
-                $btn
-            );
+            var confirmText = this.i18n.confirmDeleteSize.replace('%s', label || sizeName);
+
+            if (operation === 'delete-fallback-size') {
+                confirmText = this.i18n.confirmDeleteFallbackSize.replace('%s', label || sizeName);
+            }
+
+            this.runDetailsAction(attachmentId, { operation: operation, size: sizeName }, confirmText, $btn);
         },
 
         /**

@@ -269,7 +269,9 @@ class Local_Crush {
                     'btnDeleteAllSizes'       => __( '删除所有缩略图尺寸', 'local-crush' ),
                     'toggleNoThumbnails'      => __( '此图片不再生成缩略图', 'local-crush' ),
                     /* translators: %s: 缩略图尺寸名称 */
-                    'confirmDeleteSize'       => __( '确定要删除“%s”这个尺寸的缩略图吗？全站指向它的图片链接会改到面积最接近的现有尺寸。此操作不可撤销。', 'local-crush' ),
+                    'confirmDeleteSize'       => __( '确定要删除“%s”这个尺寸的缩略图吗？它的旧格式副本会一起删除，全站指向它们的图片链接会改到面积最接近的现有尺寸。此操作不可撤销。', 'local-crush' ),
+                    /* translators: %s: 缩略图尺寸名称 */
+                    'confirmDeleteFallbackSize' => __( '确定要删除“%s”的旧格式图片吗？新格式文件会保留，全站指向旧格式的链接会改到新格式。此操作不可撤销。', 'local-crush' ),
                     'confirmDeleteOriginalSingle' => __( '确定要删除这张图片未缩放的原始大图吗？此操作不涉及备份，没有备份的图片删除后无法恢复，且不可撤销。', 'local-crush' ),
                     'confirmDeleteDisabledSingle' => __( '确定要删除这张图片未勾选尺寸的缩略图吗？全站指向这些尺寸的链接会改到面积最接近的现有尺寸；关闭了自动缩放或缩放图与阈值不符时，也会删除缩放图让主图退回原图。此操作不可撤销。', 'local-crush' ),
                     'confirmDeleteAllSizes'   => __( '确定要删除这张图片的所有缩略图尺寸吗？会连同 -scaled 缩放图一起删除并让主图退回未缩放原图（没有未缩放原图时保留 -scaled 图），原图备份不受影响。此操作不可撤销。', 'local-crush' ),

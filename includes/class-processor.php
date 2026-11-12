@@ -2175,10 +2175,11 @@ class Local_Crush_Processor {
      * 只删除仍有对应新格式文件的旧格式文件，并把全站指向旧格式的链接改到新格式，
      * 删除后不支持新格式的浏览器也统一加载新格式图片。
      *
-     * @param int $attachment_id 附件 ID
+     * @param int      $attachment_id 附件 ID
+     * @param string[] $size_types    只处理这些尺寸；留空表示处理全部尺寸
      * @return array deleted_files、replaced、failed
      */
-    public function delete_fallback( int $attachment_id ): array {
+    public function delete_fallback( int $attachment_id, array $size_types = array() ): array {
         $result = array(
             'deleted_files' => 0,
             'replaced'      => 0,
@@ -2208,8 +2209,18 @@ class Local_Crush_Processor {
         try {
             $entries = array();
             $pairs   = array();
+            $wanted  = array();
+
+            foreach ( $size_types as $size_type ) {
+                $wanted[ (string) $size_type ] = true;
+            }
 
             foreach ( local_crush()->output_processor->get_fallback_entries( $attachment_id ) as $entry ) {
+                // 只处理点名的那几个尺寸时，别的尺寸一个都不碰。
+                if ( ! empty( $wanted ) && ! isset( $wanted[ (string) $entry['size_type'] ] ) ) {
+                    continue;
+                }
+
                 // 回退文件必须位于 uploads 内且不是符号链接，否则一律不动。
                 if ( ! $this->is_inside_upload_dir( $entry['from'] ) || is_link( $entry['from'] ) ) {
                     $result['failed'] = true;
