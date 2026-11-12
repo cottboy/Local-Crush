@@ -956,25 +956,6 @@ class Local_Crush_Thumbnail_Manager {
     }
 
     /**
-     * 算出某个文件的 -scaled 文件名
-     *
-     * 与核心一致，只在最后一个扩展名前插 -scaled；双扩展名的转换文件也能保住前面的旧格式扩展名。
-     *
-     * @param string $file_path 源文件绝对路径
-     * @return string 没有扩展名时返回空字符串
-     */
-    private function scaled_filename( string $file_path ): string {
-        $file_path = wp_normalize_path( $file_path );
-        $extension = pathinfo( $file_path, PATHINFO_EXTENSION );
-
-        if ( '' === $extension ) {
-            return '';
-        }
-
-        return dirname( $file_path ) . '/' . wp_basename( $file_path, '.' . $extension ) . '-scaled.' . $extension;
-    }
-
-    /**
      * 回收本次刚生成的旧格式缩放图
      *
      * 只删这次新造的那份；生成前就已存在说明是之前留下的，删了会破坏当前状态。
@@ -1379,20 +1360,11 @@ class Local_Crush_Thumbnail_Manager {
             return array( 'generated' => 0, 'replaced' => 0 );
         }
 
-        // 转换过的附件有旧格式原图时，缩放图也得有两种格式：旧格式名与新格式名只差一个
-        // 扩展名，前台去掉最后一段扩展名才能确定找到回退文件。
+        // 有旧格式原图时，缩放图要出两份：旧格式那份用旧格式原图缩，新格式那份用新格式
+        // 原图缩，文件名各按自己的文件名规则算，前台去掉扩展名就能找到对应的旧格式回退。
         $legacy_source     = $this->find_legacy_original_source( $attachment_id, $metadata );
         $legacy_abs        = null !== $legacy_source ? wp_normalize_path( (string) $legacy_source['path'] ) : '';
-        $legacy_scaled_abs = '';
-        $scaled_target     = '';
-
-        if ( '' !== $legacy_abs && $this->is_double_extension_target( $source_abs ) ) {
-            $legacy_scaled_abs = $this->scaled_filename( $legacy_abs );
-
-            if ( '' !== $legacy_scaled_abs ) {
-                $scaled_target = $legacy_scaled_abs . '.' . strtolower( (string) pathinfo( $source_abs, PATHINFO_EXTENSION ) );
-            }
-        }
+        $legacy_scaled_abs = '' !== $legacy_abs ? local_crush()->processor->scaled_file_path( $legacy_abs ) : '';
 
         // 已有缩放图且长边不超阈值（符合当前设置），不用重建；超过则等新图生成成功后再删旧的
         $remove_main = false;
@@ -1413,14 +1385,16 @@ class Local_Crush_Thumbnail_Manager {
         $legacy_scaled_existed = '' !== $legacy_scaled_abs && is_file( $legacy_scaled_abs );
 
         if ( '' !== $legacy_scaled_abs ) {
-            $legacy_scaled = local_crush()->processor->generate_scaled_file( $legacy_abs, $context['threshold'], $legacy_scaled_abs );
+            $legacy_scaled = local_crush()->processor->generate_scaled_file( $legacy_abs, $context['threshold'] );
 
             if ( ! is_array( $legacy_scaled ) || empty( $legacy_scaled['path'] ) || ! is_file( $legacy_scaled['path'] ) ) {
                 return null;
             }
+
+            $legacy_scaled_abs = wp_normalize_path( (string) $legacy_scaled['path'] );
         }
 
-        $scaled = local_crush()->processor->generate_scaled_file( $source_abs, $context['threshold'], $scaled_target );
+        $scaled = local_crush()->processor->generate_scaled_file( $source_abs, $context['threshold'] );
 
         if ( ! is_array( $scaled ) || empty( $scaled['path'] ) || ! is_file( $scaled['path'] ) ) {
             $this->discard_scaled_fallback( $legacy_scaled_abs, $legacy_scaled_existed );

@@ -1137,17 +1137,53 @@ class Local_Crush_Processor {
     }
 
     /**
+     * 算出缩放图应保存的路径
+     *
+     * 插件转换后的文件名是“原名 + .新格式”，缩放标记必须插在原名自己的扩展名前：
+     * photo.jpg.webp → photo-scaled.jpg.webp，没转换过的 photo.jpg → photo-scaled.jpg。
+     * 只看文件名结构，不看旧格式回退在不在，所以关掉回退的转换图也不会算错。
+     *
+     * @param string $source_path 未缩放的源文件绝对路径
+     * @return string 没有扩展名时返回空字符串
+     */
+    public function scaled_file_path( string $source_path ): string {
+        $source_path = wp_normalize_path( $source_path );
+        $name        = wp_basename( $source_path );
+        $extension   = strtolower( pathinfo( $name, PATHINFO_EXTENSION ) );
+
+        if ( '' === $extension ) {
+            return '';
+        }
+
+        $directory = dirname( $source_path );
+        $stem      = substr( $name, 0, strlen( $name ) - strlen( $extension ) - 1 );
+
+        // 双扩展名说明前面那段是旧格式原文件名，缩放标记插在旧格式扩展名前，
+        // 这样前台去掉最后一段扩展名就能还原出旧格式缩放图。
+        if ( in_array( $extension, array( 'webp', 'avif', 'jxl' ), true ) ) {
+            $legacy_extension = strtolower( pathinfo( $stem, PATHINFO_EXTENSION ) );
+
+            if ( '' !== $legacy_extension ) {
+                $stem = substr( $stem, 0, strlen( $stem ) - strlen( $legacy_extension ) - 1 );
+
+                return $directory . '/' . $stem . '-scaled.' . $legacy_extension . '.' . $extension;
+            }
+        }
+
+        return $directory . '/' . $stem . '-scaled.' . $extension;
+    }
+
+    /**
      * 用 WordPress 图片编辑器生成 -scaled 缩放文件
      *
      * 与核心上传流程一致：resize 到阈值内、按 EXIF 方向旋转、另存为 xxx-scaled 文件。
-     * 目标必须与源文件不同，否则会把未缩放源文件直接覆盖掉。
+     * 文件名统一由 scaled_file_path 计算；目标必须与源文件不同，否则会覆盖未缩放源文件。
      *
      * @param string $source_path 未缩放的源文件绝对路径
      * @param int    $threshold   阈值（像素）
-     * @param string $target_path 目标路径；传空字符串时按核心规则命名为 xxx-scaled.扩展名
      * @return array|null 图片编辑器保存结果；失败或目标与源相同时返回 null
      */
-    public function generate_scaled_file( string $source_path, int $threshold, string $target_path = '' ): ?array {
+    public function generate_scaled_file( string $source_path, int $threshold ): ?array {
         $editor = wp_get_image_editor( $source_path );
 
         if ( is_wp_error( $editor ) ) {
@@ -1167,9 +1203,9 @@ class Local_Crush_Processor {
             return null;
         }
 
-        $target = '' !== $target_path ? $target_path : $editor->generate_filename( 'scaled' );
+        $target = $this->scaled_file_path( $source_path );
 
-        if ( ! is_string( $target ) || '' === $target ) {
+        if ( '' === $target ) {
             return null;
         }
 
