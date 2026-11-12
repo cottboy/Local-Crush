@@ -159,20 +159,29 @@ class Local_Crush_Media_Library {
                 margin: 0;
             }
 
-            /* 闹钟式开关：轨道 + 滑块，整块可点 */
+            /* 闹钟式开关：轨道 + 滑块，整块可点，单独靠右 */
             .local-crush-switch {
                 position: relative;
                 display: inline-flex;
                 align-items: center;
                 gap: 8px;
+                margin-left: auto;
                 cursor: pointer;
                 user-select: none;
             }
 
-            .local-crush-switch input {
+            /* 藏掉原生复选框；WordPress 会给禁用的复选框加 0.7 不透明度，
+               保存开关时会把这个小输入框露成一条横线，所以要连禁用态一起藏 */
+            .local-crush-switch input,
+            .local-crush-switch input:disabled {
                 position: absolute;
                 width: 1px;
                 height: 1px;
+                min-width: 0;
+                margin: 0;
+                padding: 0;
+                border: 0;
+                background: none;
                 opacity: 0;
             }
 
