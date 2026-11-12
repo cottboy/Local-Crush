@@ -297,6 +297,36 @@ class Local_Crush_Database {
     }
 
     /**
+     * 把一条压缩记录挂到另一个尺寸类型下
+     *
+     * 主图与未缩放原图互换角色时，记录要跟着文件走，不能整组删掉。
+     *
+     * @param int    $record_id 记录 ID
+     * @param string $size_type 新的尺寸类型
+     * @return bool
+     */
+    public function move_record_to_size_type( int $record_id, string $size_type ): bool {
+        global $wpdb;
+
+        $record_id = absint( $record_id );
+        $size_type = sanitize_text_field( $size_type );
+
+        if ( ! $record_id || '' === $size_type ) {
+            return false;
+        }
+
+        $result = $wpdb->update(
+            $this->records_table,
+            array( 'size_type' => $size_type ),
+            array( 'id' => $record_id ),
+            array( '%s' ),
+            array( '%d' )
+        );
+
+        return false !== $result;
+    }
+
+    /**
      * 删除单条压缩记录
      *
      * @param int $record_id 记录 ID

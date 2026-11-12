@@ -1203,6 +1203,94 @@ class Local_Crush_Output {
     }
 
     /**
+     * 主文件换了文件后，把主图与未缩放原图的转换映射跟着换角色
+     *
+     * 映射的 to 指向该角色当前使用的新格式文件：哪个角色的文件成了新主图，
+     * 映射和它的回退记录就改名到新角色；指向已删文件的映射与记录一并清掉。
+     * 只动 full 与 original_image 两条，缩略图尺寸不受影响。
+     *
+     * @param int    $attachment_id 附件 ID
+     * @param string $main_abs      切换后的主图绝对路径
+     * @param string $orig_abs      切换后的未缩放原图绝对路径；没有时传空字符串
+     */
+    public function realign_main_output( int $attachment_id, string $main_abs, string $orig_abs ): void {
+        $entries = $this->read_output_entries( $attachment_id );
+        $main    = $this->normalized_path( $this->get_relative_upload_path( $main_abs ) );
+        $orig    = '' === $orig_abs ? '' : $this->normalized_path( $this->get_relative_upload_path( $orig_abs ) );
+        $roles   = array();
+
+        foreach ( array( 'full', 'original_image' ) as $size_type ) {
+            if ( ! isset( $entries[ $size_type ] ) ) {
+                continue;
+            }
+
+            $entry = $entries[ $size_type ];
+            $to    = $this->normalized_path( $entry['to'] );
+
+            unset( $entries[ $size_type ] );
+
+            if ( $to === $main ) {
+                $target = 'full';
+            } elseif ( '' !== $orig && $to === $orig ) {
+                $target = 'original_image';
+            } else {
+                // 映射指向的文件已不再担任这两个角色，连同回退记录一起清掉
+                $this->forget_fallback_records( $attachment_id, array( $size_type ) );
+                continue;
+            }
+
+            // 同一个角色不该有两条映射：保留原本就在目标键上的那条
+            if ( isset( $roles[ $target ] ) ) {
+                if ( $size_type !== $target ) {
+                    $this->forget_fallback_records( $attachment_id, array( $size_type ) );
+                    continue;
+                }
+
+                $this->forget_fallback_records( $attachment_id, array( $roles[ $target ]['size_type'] ) );
+            }
+
+            $roles[ $target ] = $entry;
+        }
+
+        foreach ( $roles as $target => $entry ) {
+            if ( $entry['size_type'] !== $target ) {
+                $this->move_fallback_record( $attachment_id, $entry['size_type'], $target );
+            }
+
+            $entry['size_type'] = $target;
+            $entries[ $target ] = $entry;
+        }
+
+        $this->store_output_entries( $attachment_id, $entries );
+    }
+
+    /**
+     * 把兼容格式回退记录改挂到另一个尺寸类型下
+     *
+     * @param int    $attachment_id 附件 ID
+     * @param string $from_type     原尺寸类型
+     * @param string $to_type       新尺寸类型
+     */
+    private function move_fallback_record( int $attachment_id, string $from_type, string $to_type ): void {
+        $database = local_crush()->database;
+        $record   = $database->get_record( $attachment_id, $this->fallback_size_type( $from_type ) );
+
+        if ( ! is_array( $record ) || empty( $record['id'] ) ) {
+            $this->forget_fallback_records( $attachment_id, array( $to_type ) );
+            return;
+        }
+
+        $existing = $database->get_record( $attachment_id, $this->fallback_size_type( $to_type ) );
+
+        // 目标键上的旧记录描述的是旧文件，先删掉避免撞唯一键
+        if ( is_array( $existing ) && ! empty( $existing['id'] ) && (int) $existing['id'] !== (int) $record['id'] ) {
+            $database->delete_record( (int) $existing['id'] );
+        }
+
+        $database->move_record_to_size_type( (int) $record['id'], $this->fallback_size_type( $to_type ) );
+    }
+
+    /**
      * 查找该尺寸已有的转换映射
      *
      * @param int    $attachment_id 附件 ID

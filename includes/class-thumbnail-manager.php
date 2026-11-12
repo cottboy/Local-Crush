@@ -998,23 +998,91 @@ class Local_Crush_Thumbnail_Manager {
     }
 
     /**
-     * 删除主文件相关的压缩记录
+     * 主文件结构变化后，按文件的实际角色重新安排主图与未缩放原图的记录
      *
-     * 缩放图的生成与去缩放都改变了主文件结构，full 与 original_image 两条记录
-     * 描述的是旧文件，删除后让主文件回到待压缩状态，用户可重新压缩。
+     * full 与 original_image 只是文件当前担任的角色：缩放图接管或退回主图后，
+     * 记录必须跟着文件换名字。整组删掉会让压过的新主图显示未压缩，下次还会被重复压缩。
+     * 只有描述的文件已不再担任这两个角色（例如刚被删掉的缩放图）的记录才删除。
      *
-     * @param int $attachment_id 附件 ID
+     * @param int    $attachment_id 附件 ID
+     * @param string $main_abs      切换后的主图绝对路径
+     * @param string $orig_abs      切换后的未缩放原图绝对路径；没有时传空字符串
      */
-    private function forget_main_records( int $attachment_id ): void {
+    private function realign_main_records( int $attachment_id, string $main_abs, string $orig_abs ): void {
         $database = local_crush()->database;
+        $main     = $this->normalized_path( $this->relative_upload_path( $main_abs ) );
+        $orig     = '' === $orig_abs ? '' : $this->normalized_path( $this->relative_upload_path( $orig_abs ) );
+
+        $records = array();
 
         foreach ( array( 'full', 'original_image' ) as $size_type ) {
             $record = $database->get_record( $attachment_id, $size_type );
 
-            if ( $record ) {
-                $database->delete_record( (int) $record['id'] );
+            if ( is_array( $record ) && ! empty( $record['id'] ) ) {
+                $records[] = array(
+                    'id'   => (int) $record['id'],
+                    'type' => $size_type,
+                    'path' => $this->normalized_path( (string) $record['file_path'] ),
+                );
             }
         }
+
+        $roles  = array(); // 目标尺寸类型 => 记录
+        $remove = array(); // 要删除的记录 ID
+
+        foreach ( $records as $record ) {
+            if ( $record['path'] === $main ) {
+                $target = 'full';
+            } elseif ( '' !== $orig && $record['path'] === $orig ) {
+                $target = 'original_image';
+            } else {
+                $remove[] = $record['id'];
+                continue;
+            }
+
+            // 同一个角色不该有两条记录：保留原本就挂在目标键上的那条
+            if ( isset( $roles[ $target ] ) ) {
+                if ( $record['type'] !== $target ) {
+                    $remove[] = $record['id'];
+                    continue;
+                }
+
+                $remove[] = $roles[ $target ]['id'];
+            }
+
+            $roles[ $target ] = $record;
+        }
+
+        // 先删旧记录，搬动时才不会撞上 (attachment_id, size_type) 唯一键
+        foreach ( array_unique( $remove ) as $id ) {
+            $database->delete_record( $id );
+        }
+
+        foreach ( $roles as $target => $record ) {
+            if ( $record['type'] !== $target ) {
+                $database->move_record_to_size_type( $record['id'], $target );
+            }
+        }
+    }
+
+    /**
+     * 绝对路径转成相对 uploads 的路径
+     *
+     * 压缩记录的 file_path 统一存相对路径，判断记录描述哪份文件时必须用同一口径。
+     *
+     * @param string $file_path 绝对路径
+     * @return string
+     */
+    private function relative_upload_path( string $file_path ): string {
+        $upload   = wp_upload_dir();
+        $base_dir = untrailingslashit( wp_normalize_path( $upload['basedir'] ) );
+        $path     = wp_normalize_path( $file_path );
+
+        if ( 0 === strpos( $path, $base_dir . '/' ) ) {
+            return ltrim( substr( $path, strlen( $base_dir ) ), '/' );
+        }
+
+        return ltrim( $path, '/' );
     }
 
     /**
@@ -1137,7 +1205,9 @@ class Local_Crush_Thumbnail_Manager {
 
         update_attached_file( $attachment_id, $context['orig_rel'] );
 
-        $this->forget_main_records( $attachment_id );
+        // 主图换成了未缩放原图：它自己的压缩记录改挂到 full，被删缩放图的记录清掉
+        $this->realign_main_records( $attachment_id, $orig_abs, '' );
+        local_crush()->output_processor->realign_main_output( $attachment_id, $orig_abs, '' );
 
         return array( 'deleted' => $deleted, 'replaced' => $replaced );
     }
@@ -1322,7 +1392,9 @@ class Local_Crush_Thumbnail_Manager {
 
         update_attached_file( $attachment_id, $scaled_rel );
 
-        $this->forget_main_records( $attachment_id );
+        // 原来的主图退成未缩放原图：它的压缩记录改挂到 original_image，新缩放图没有记录
+        $this->realign_main_records( $attachment_id, $scaled_abs, $source_abs );
+        local_crush()->output_processor->realign_main_output( $attachment_id, $scaled_abs, $source_abs );
 
         return array( 'generated' => 1, 'replaced' => $replaced );
     }
