@@ -215,7 +215,9 @@ class Local_Crush_Media_Library {
                 transform: translateX( 18px );
             }
 
-            .local-crush-switch input:focus + .local-crush-switch-track {
+            /* 只有键盘操作才画焦点圈；鼠标点击时输入框会先聚焦、随即被禁用失焦，
+               画了就会闪一圈阴影 */
+            .local-crush-switch input:focus-visible + .local-crush-switch-track {
                 box-shadow: 0 0 0 2px #fff, 0 0 0 4px #2271b1;
             }
 
