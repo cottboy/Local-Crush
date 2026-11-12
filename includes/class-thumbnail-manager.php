@@ -1394,16 +1394,14 @@ class Local_Crush_Thumbnail_Manager {
             }
         }
 
-        // 已有缩放图、长边不超阈值、文件名也合规时不用重建；否则重建，含阈值变化
-        // 和旧版本只生成了新格式缩放图、旧格式回退没补上的情况。
+        // 已有缩放图且长边不超阈值（符合当前设置），不用重建；超过则等新图生成成功后再删旧的
         $remove_main = false;
 
         if ( $context['is_scaled'] && is_file( $main_abs ) ) {
             $main_size = wp_getimagesize( $main_abs );
 
             if ( is_array( $main_size ) && ! empty( $main_size[0] ) && ! empty( $main_size[1] )
-                && max( (int) $main_size[0], (int) $main_size[1] ) <= $context['threshold']
-                && ( '' === $scaled_target || $this->normalized_path( $main_abs ) === $this->normalized_path( $scaled_target ) ) ) {
+                && max( (int) $main_size[0], (int) $main_size[1] ) <= $context['threshold'] ) {
                 return array( 'generated' => 0, 'replaced' => 0 );
             }
 
