@@ -948,15 +948,8 @@ class Local_Crush_Thumbnail_Manager {
                 return null;
             }
 
-            // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
-            if ( ! unlink( $main_abs ) || file_exists( $main_abs ) ) {
-                return null;
-            }
-
-            $deleted = 1;
-
-            // 全站固化的缩放图地址改回原图
-            local_crush()->references->update_references(
+            // 先把全站固化的缩放图地址改回原图，成功后才删文件，避免删完改不动留下悬空链接。
+            if ( ! local_crush()->references->update_references(
                 array(
                     array(
                         'from' => $main_abs,
@@ -964,7 +957,26 @@ class Local_Crush_Thumbnail_Manager {
                     ),
                 ),
                 $replaced
-            );
+            ) ) {
+                return null;
+            }
+
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+            if ( ! unlink( $main_abs ) || file_exists( $main_abs ) ) {
+                // 链接已经改到原图、文件却删不掉：把链接退回缩放图，保持原状等下次重试。
+                local_crush()->references->update_references(
+                    array(
+                        array(
+                            'from' => $orig_abs,
+                            'to'   => $main_abs,
+                        ),
+                    )
+                );
+
+                return null;
+            }
+
+            $deleted = 1;
         }
 
         $metadata['file'] = $context['orig_rel'];
@@ -1033,7 +1045,9 @@ class Local_Crush_Thumbnail_Manager {
             return array( 'generated' => 0, 'replaced' => 0 );
         }
 
-        // 已有缩放图且长边不超阈值（符合当前设置），不用重建；超过则先删掉旧的
+        // 已有缩放图且长边不超阈值（符合当前设置），不用重建；超过则等新图生成成功后再删旧的
+        $remove_main = false;
+
         if ( $context['is_scaled'] && is_file( $main_abs ) ) {
             $main_size = wp_getimagesize( $main_abs );
 
@@ -1042,13 +1056,8 @@ class Local_Crush_Thumbnail_Manager {
                 return array( 'generated' => 0, 'replaced' => 0 );
             }
 
-            if ( $this->is_safe_upload_path( $main_abs )
-                && $this->normalized_path( $main_abs ) !== $this->normalized_path( $source_abs ) ) {
-                // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
-                if ( ! unlink( $main_abs ) || file_exists( $main_abs ) ) {
-                    return null;
-                }
-            }
+            $remove_main = $this->is_safe_upload_path( $main_abs )
+                && $this->normalized_path( $main_abs ) !== $this->normalized_path( $source_abs );
         }
 
         $scaled = local_crush()->processor->generate_scaled_file( $source_abs, $context['threshold'] );
@@ -1062,9 +1071,9 @@ class Local_Crush_Thumbnail_Manager {
 
         $replaced = 0;
 
-        // 主文件名变化时，全站固化的旧地址改到新缩放图
+        // 主文件名变化时，先把全站固化的旧地址改到新缩放图，成功后才删旧主图。
         if ( $this->normalized_path( $scaled_rel ) !== $this->normalized_path( $context['main_rel'] ) ) {
-            local_crush()->references->update_references(
+            if ( ! local_crush()->references->update_references(
                 array(
                     array(
                         'from' => $main_abs,
@@ -1072,7 +1081,35 @@ class Local_Crush_Thumbnail_Manager {
                     ),
                 ),
                 $replaced
-            );
+            ) ) {
+                // 新图已生成但链接改不过去：删掉新图，旧主图原样保留。
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- 刚由图片编辑器生成的新文件，删掉不会影响任何已有引用。
+                unlink( $scaled_abs );
+
+                return null;
+            }
+
+            // 同名的旧主图已被新图覆盖，无需再删。
+            if ( $remove_main && is_file( $main_abs )
+                && $this->normalized_path( $main_abs ) !== $this->normalized_path( $scaled_abs ) ) {
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+                if ( ! unlink( $main_abs ) || file_exists( $main_abs ) ) {
+                    // 链接已改到新图、旧文件却删不掉：退回链接并删掉新图，保持原状等下次重试。
+                    local_crush()->references->update_references(
+                        array(
+                            array(
+                                'from' => $scaled_abs,
+                                'to'   => $main_abs,
+                            ),
+                        )
+                    );
+
+                    // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- 刚生成的新图，退回链接后删除不会影响引用。
+                    unlink( $scaled_abs );
+
+                    return null;
+                }
+            }
         }
 
         $metadata['file']           = $scaled_rel;

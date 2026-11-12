@@ -989,9 +989,10 @@ class Local_Crush_Processor {
      * 3. -scaled 主图真实存在、非空、不是符号链接且在 uploads 内 —— 原图删掉后就只剩它了；
      * 4. 未缩放原图与主图不是同一个文件，且是 uploads 内的普通文件。
      *
-     * 删除成功后清掉元数据里的 original_image，并顺手清掉指向这份原图的转换映射、
-     * 旧格式回退文件与压缩记录，不留任何指向已删文件的痕迹。原图早就不在磁盘上时
-     * 只清理这些残留指向，不动主图。
+     * 删除前先把全站指向这份原图的链接（含它转换后的旧格式回退文件）改到 -scaled 主图，
+     * 改链接失败就一个文件都不动。删除成功后清掉元数据里的 original_image，并顺手清掉
+     * 指向这份原图的转换映射、旧格式回退文件与压缩记录，不留任何指向已删文件的痕迹。
+     * 原图早就不在磁盘上时只清理这些残留指向，不动主图。
      *
      * @param int  $attachment_id   附件 ID
      * @param bool $ignore_settings 为 true 时只看数据、不看两个设置开关（批量按钮用）
@@ -1044,11 +1045,36 @@ class Local_Crush_Processor {
 
         $had_original = is_file( $orig_abs );
 
-        if ( $had_original ) {
-            if ( ! $this->is_inside_upload_dir( $orig_abs ) ) {
-                return 0;
+        if ( $had_original && ! $this->is_inside_upload_dir( $orig_abs ) ) {
+            return 0;
+        }
+
+        // 先改链接再删文件：指向这份原图的地址全部挪到当前主图。转换过的原图还留着
+        // 旧格式回退文件，它同样会被清掉，一并改到主图，避免删完出现打不开的图。
+        $pairs = array(
+            array(
+                'from' => $orig_abs,
+                'to'   => $main_abs,
+            ),
+        );
+
+        foreach ( local_crush()->output_processor->get_output_entries( $attachment_id ) as $entry ) {
+            if ( 'original_image' !== (string) $entry['size_type'] || empty( $entry['from'] ) ) {
+                continue;
             }
 
+            $pairs[] = array(
+                'from' => (string) $entry['from'],
+                'to'   => $main_abs,
+            );
+        }
+
+        // 链接改不过去就整个停下，文件一个都不动，下次压缩还能重试。
+        if ( ! local_crush()->references->update_references( $pairs ) ) {
+            return 0;
+        }
+
+        if ( $had_original ) {
             // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- 已确认是 uploads 内的普通文件，不会删到目录外或符号链接目标。
             if ( ! unlink( $orig_abs ) || file_exists( $orig_abs ) ) {
                 // 删不掉就保持现状，下次压缩还能再试，不能留下“文件还在、记录没了”的状态。
