@@ -956,6 +956,43 @@ class Local_Crush_Thumbnail_Manager {
     }
 
     /**
+     * 算出某个文件的 -scaled 文件名
+     *
+     * 与核心一致，只在最后一个扩展名前插 -scaled；双扩展名的转换文件也能保住前面的旧格式扩展名。
+     *
+     * @param string $file_path 源文件绝对路径
+     * @return string 没有扩展名时返回空字符串
+     */
+    private function scaled_filename( string $file_path ): string {
+        $file_path = wp_normalize_path( $file_path );
+        $extension = pathinfo( $file_path, PATHINFO_EXTENSION );
+
+        if ( '' === $extension ) {
+            return '';
+        }
+
+        return dirname( $file_path ) . '/' . wp_basename( $file_path, '.' . $extension ) . '-scaled.' . $extension;
+    }
+
+    /**
+     * 回收本次刚生成的旧格式缩放图
+     *
+     * 只删这次新造的那份；生成前就已存在说明是之前留下的，删了会破坏当前状态。
+     *
+     * @param string $path    旧格式缩放图绝对路径
+     * @param bool   $existed 生成前是否已存在
+     * @return void
+     */
+    private function discard_scaled_fallback( string $path, bool $existed ): void {
+        if ( $existed || '' === $path || ! is_file( $path ) || ! $this->is_safe_upload_path( $path ) ) {
+            return;
+        }
+
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- 刚生成的回退图，还没被任何地方引用。
+        unlink( $path );
+    }
+
+    /**
      * 判断某个尺寸对这张图是否适用
      *
      * 等比缩放是按最长边缩的：只要原图在任一维度大于目标就会产出（2000x1500 对
@@ -1342,14 +1379,31 @@ class Local_Crush_Thumbnail_Manager {
             return array( 'generated' => 0, 'replaced' => 0 );
         }
 
-        // 已有缩放图且长边不超阈值（符合当前设置），不用重建；超过则等新图生成成功后再删旧的
+        // 转换过的附件有旧格式原图时，缩放图也得有两种格式：旧格式名与新格式名只差一个
+        // 扩展名，前台去掉最后一段扩展名才能确定找到回退文件。
+        $legacy_source     = $this->find_legacy_original_source( $attachment_id, $metadata );
+        $legacy_abs        = null !== $legacy_source ? wp_normalize_path( (string) $legacy_source['path'] ) : '';
+        $legacy_scaled_abs = '';
+        $scaled_target     = '';
+
+        if ( '' !== $legacy_abs && $this->is_double_extension_target( $source_abs ) ) {
+            $legacy_scaled_abs = $this->scaled_filename( $legacy_abs );
+
+            if ( '' !== $legacy_scaled_abs ) {
+                $scaled_target = $legacy_scaled_abs . '.' . strtolower( (string) pathinfo( $source_abs, PATHINFO_EXTENSION ) );
+            }
+        }
+
+        // 已有缩放图、长边不超阈值、文件名也合规时不用重建；否则重建，含阈值变化
+        // 和旧版本只生成了新格式缩放图、旧格式回退没补上的情况。
         $remove_main = false;
 
         if ( $context['is_scaled'] && is_file( $main_abs ) ) {
             $main_size = wp_getimagesize( $main_abs );
 
             if ( is_array( $main_size ) && ! empty( $main_size[0] ) && ! empty( $main_size[1] )
-                && max( (int) $main_size[0], (int) $main_size[1] ) <= $context['threshold'] ) {
+                && max( (int) $main_size[0], (int) $main_size[1] ) <= $context['threshold']
+                && ( '' === $scaled_target || $this->normalized_path( $main_abs ) === $this->normalized_path( $scaled_target ) ) ) {
                 return array( 'generated' => 0, 'replaced' => 0 );
             }
 
@@ -1357,9 +1411,22 @@ class Local_Crush_Thumbnail_Manager {
                 && $this->normalized_path( $main_abs ) !== $this->normalized_path( $source_abs );
         }
 
-        $scaled = local_crush()->processor->generate_scaled_file( $source_abs, $context['threshold'] );
+        // 旧格式缩放图按核心的做法从未缩放的旧格式原图生成
+        $legacy_scaled_existed = '' !== $legacy_scaled_abs && is_file( $legacy_scaled_abs );
+
+        if ( '' !== $legacy_scaled_abs ) {
+            $legacy_scaled = local_crush()->processor->generate_scaled_file( $legacy_abs, $context['threshold'], $legacy_scaled_abs );
+
+            if ( ! is_array( $legacy_scaled ) || empty( $legacy_scaled['path'] ) || ! is_file( $legacy_scaled['path'] ) ) {
+                return null;
+            }
+        }
+
+        $scaled = local_crush()->processor->generate_scaled_file( $source_abs, $context['threshold'], $scaled_target );
 
         if ( ! is_array( $scaled ) || empty( $scaled['path'] ) || ! is_file( $scaled['path'] ) ) {
+            $this->discard_scaled_fallback( $legacy_scaled_abs, $legacy_scaled_existed );
+
             return null;
         }
 
@@ -1382,6 +1449,7 @@ class Local_Crush_Thumbnail_Manager {
                 // 新图已生成但链接改不过去：删掉新图，旧主图原样保留。
                 // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- 刚由图片编辑器生成的新文件，删掉不会影响任何已有引用。
                 unlink( $scaled_abs );
+                $this->discard_scaled_fallback( $legacy_scaled_abs, $legacy_scaled_existed );
 
                 return null;
             }
@@ -1403,6 +1471,7 @@ class Local_Crush_Thumbnail_Manager {
 
                     // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- 刚生成的新图，退回链接后删除不会影响引用。
                     unlink( $scaled_abs );
+                    $this->discard_scaled_fallback( $legacy_scaled_abs, $legacy_scaled_existed );
 
                     return null;
                 }
@@ -1426,6 +1495,11 @@ class Local_Crush_Thumbnail_Manager {
         // 原来的主图退成未缩放原图：它的压缩记录改挂到 original_image，新缩放图没有记录
         $this->realign_main_records( $attachment_id, $scaled_abs, $source_abs );
         local_crush()->output_processor->realign_main_output( $attachment_id, $scaled_abs, $source_abs );
+
+        // 缩放图自己的旧格式回退映射：前台按“去掉新格式扩展名”推导回退地址，删除和明细也靠这条映射
+        if ( '' !== $legacy_scaled_abs ) {
+            local_crush()->output_processor->save_output_mapping( $attachment_id, 'full', $legacy_scaled_abs, $scaled_abs );
+        }
 
         return array( 'generated' => 1, 'replaced' => $replaced );
     }

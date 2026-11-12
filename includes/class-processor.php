@@ -1144,9 +1144,10 @@ class Local_Crush_Processor {
      *
      * @param string $source_path 未缩放的源文件绝对路径
      * @param int    $threshold   阈值（像素）
+     * @param string $target_path 目标路径；传空字符串时按核心规则命名为 xxx-scaled.扩展名
      * @return array|null 图片编辑器保存结果；失败或目标与源相同时返回 null
      */
-    public function generate_scaled_file( string $source_path, int $threshold ): ?array {
+    public function generate_scaled_file( string $source_path, int $threshold, string $target_path = '' ): ?array {
         $editor = wp_get_image_editor( $source_path );
 
         if ( is_wp_error( $editor ) ) {
@@ -1166,7 +1167,7 @@ class Local_Crush_Processor {
             return null;
         }
 
-        $target = $editor->generate_filename( 'scaled' );
+        $target = '' !== $target_path ? $target_path : $editor->generate_filename( 'scaled' );
 
         if ( ! is_string( $target ) || '' === $target ) {
             return null;
