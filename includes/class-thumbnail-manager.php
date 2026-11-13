@@ -1372,7 +1372,8 @@ class Local_Crush_Thumbnail_Manager {
         $legacy_abs        = null !== $legacy_source ? wp_normalize_path( (string) $legacy_source['path'] ) : '';
         $legacy_scaled_abs = '' !== $legacy_abs ? local_crush()->processor->scaled_file_path( $attachment_id, $legacy_abs ) : '';
 
-        // 已有缩放图且长边不超阈值（符合当前设置），不用重建；超过则等新图生成成功后再删旧的
+        // 已有的新格式缩放图长边不超阈值（符合当前设置）就不用重建；超过则等新图生成成功后再删旧的
+        $need_main   = true;
         $remove_main = false;
 
         if ( $context['is_scaled'] && is_file( $main_abs ) ) {
@@ -1380,15 +1381,39 @@ class Local_Crush_Thumbnail_Manager {
 
             if ( is_array( $main_size ) && ! empty( $main_size[0] ) && ! empty( $main_size[1] )
                 && max( (int) $main_size[0], (int) $main_size[1] ) <= $context['threshold'] ) {
-                return array( 'generated' => 0, 'replaced' => 0 );
+                $need_main = false;
+            } else {
+                $remove_main = $this->is_safe_upload_path( $main_abs )
+                    && $this->normalized_path( $main_abs ) !== $this->normalized_path( $source_abs );
             }
-
-            $remove_main = $this->is_safe_upload_path( $main_abs )
-                && $this->normalized_path( $main_abs ) !== $this->normalized_path( $source_abs );
         }
 
-        // 旧格式缩放图按核心的做法从未缩放的旧格式原图生成
+        // 旧格式缩放图按核心的做法从未缩放的旧格式原图生成。
+        // 新格式主图没问题时它也可能单独缺失（例如只删了旧格式那一份），必须能单独补回来。
         $legacy_scaled_existed = '' !== $legacy_scaled_abs && is_file( $legacy_scaled_abs );
+        $need_legacy           = '' !== $legacy_scaled_abs && ! $legacy_scaled_existed;
+
+        if ( ! $need_main && ! $need_legacy ) {
+            return array( 'generated' => 0, 'replaced' => 0 );
+        }
+
+        if ( ! $need_main ) {
+            // 只缺旧格式缩放图：补这一份就行，主图、元数据和正文链接都不用动。
+            $legacy_scaled = local_crush()->processor->generate_scaled_file( $attachment_id, $legacy_abs, $context['threshold'] );
+
+            if ( ! is_array( $legacy_scaled ) || empty( $legacy_scaled['path'] ) || ! is_file( $legacy_scaled['path'] ) ) {
+                return null;
+            }
+
+            local_crush()->output_processor->save_output_mapping(
+                $attachment_id,
+                'full',
+                wp_normalize_path( (string) $legacy_scaled['path'] ),
+                $main_abs
+            );
+
+            return array( 'generated' => 1, 'replaced' => 0 );
+        }
 
         if ( '' !== $legacy_scaled_abs ) {
             $legacy_scaled = local_crush()->processor->generate_scaled_file( $attachment_id, $legacy_abs, $context['threshold'] );
