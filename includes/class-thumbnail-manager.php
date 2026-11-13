@@ -1394,10 +1394,31 @@ class Local_Crush_Thumbnail_Manager {
     }
 
     /**
+     * 判断缩放图长边是否正好等于阈值
+     *
+     * 原图超过阈值时，核心和本插件都是按长边等比缩到阈值内，缩放图长边必然等于阈值。
+     * 读不到尺寸时按不符合处理，交给生成流程重试。
+     *
+     * @param string $path      缩放图绝对路径
+     * @param int    $threshold 阈值
+     * @return bool
+     */
+    private function scaled_matches_threshold( string $path, int $threshold ): bool {
+        $size = wp_getimagesize( $path );
+
+        if ( ! is_array( $size ) || empty( $size[0] ) || empty( $size[1] ) ) {
+            return false;
+        }
+
+        return max( (int) $size[0], (int) $size[1] ) === $threshold;
+    }
+
+    /**
      * 补生成按钮：按当前缩放设置补建或修正 -scaled 缩放图
      *
-     * 开启自动缩放且未缩放原图长边超过阈值时，若无缩放图或缩放图长边超过阈值，
+     * 开启自动缩放且未缩放原图长边超过阈值时，若无缩放图或缩放图长边与阈值不符，
      * 就从原图重新生成 -scaled 缩放图并接管主文件，同步元数据、正文链接和压缩记录。
+     * 新格式与旧格式回退两份缩放图一起重做。
      * 调用前须已持有附件锁。
      *
      * @param int $attachment_id 附件 ID
@@ -1441,26 +1462,31 @@ class Local_Crush_Thumbnail_Manager {
         $legacy_abs        = null !== $legacy_source ? wp_normalize_path( (string) $legacy_source['path'] ) : '';
         $legacy_scaled_abs = '' !== $legacy_abs ? local_crush()->processor->scaled_file_path( $attachment_id, $legacy_abs ) : '';
 
-        // 已有的新格式缩放图长边不超阈值（符合当前设置）就不用重建；超过则等新图生成成功后再删旧的
+        // 缩放图长边应正好等于阈值：阈值调大后旧图偏小、调小后旧图偏大，都算不符合当前设置，
+        // 要按原图重新生成；符合就不用重建，等新图生成成功后再删旧的。
         $need_main   = true;
         $remove_main = false;
 
         if ( $context['is_scaled'] && is_file( $main_abs ) ) {
-            $main_size = wp_getimagesize( $main_abs );
+            $remove_main = $this->is_safe_upload_path( $main_abs )
+                && $this->normalized_path( $main_abs ) !== $this->normalized_path( $source_abs );
 
-            if ( is_array( $main_size ) && ! empty( $main_size[0] ) && ! empty( $main_size[1] )
-                && max( (int) $main_size[0], (int) $main_size[1] ) <= $context['threshold'] ) {
+            if ( $this->scaled_matches_threshold( $main_abs, $context['threshold'] ) ) {
                 $need_main = false;
-            } else {
-                $remove_main = $this->is_safe_upload_path( $main_abs )
-                    && $this->normalized_path( $main_abs ) !== $this->normalized_path( $source_abs );
             }
         }
 
         // 旧格式缩放图按核心的做法从未缩放的旧格式原图生成。
-        // 新格式主图没问题时它也可能单独缺失（例如只删了旧格式那一份），必须能单独补回来。
+        // 新格式主图没问题时它也可能单独缺失（例如只删了旧格式那一份），必须能单独补回来；
+        // 但它尺寸不符合阈值时不能只补它自己，要连新格式主图一起重做，两份缩放图才能重新成对。
         $legacy_scaled_existed = '' !== $legacy_scaled_abs && is_file( $legacy_scaled_abs );
-        $need_legacy           = '' !== $legacy_scaled_abs && ! $legacy_scaled_existed;
+        $legacy_conforms       = $legacy_scaled_existed
+            && $this->scaled_matches_threshold( $legacy_scaled_abs, $context['threshold'] );
+        $need_legacy           = '' !== $legacy_scaled_abs && ! $legacy_conforms;
+
+        if ( $legacy_scaled_existed && ! $legacy_conforms ) {
+            $need_main = true;
+        }
 
         if ( ! $need_main && ! $need_legacy ) {
             return array( 'generated' => 0, 'replaced' => 0 );
