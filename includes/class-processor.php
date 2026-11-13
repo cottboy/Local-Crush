@@ -385,8 +385,72 @@ class Local_Crush_Processor {
         return array(
             'attachment_id' => $attachment_id,
             'total_size'    => $total_size,
-            'items'         => $items,
+            'items'         => $this->sort_detail_items( $items ),
         );
+    }
+
+    /**
+     * 按设置页的缩略图尺寸顺序排列详情行。
+     *
+     * 主图固定在最前，未缩放原图紧随其后，缩略图按 wp_get_registered_image_subsizes()
+     * 的顺序排，也就是设置页复选框的顺序；主题或插件已不再注册的旧尺寸排在最后。
+     * 分组顺序保持不变：当前文件 → 旧兼容格式 → 原图备份。
+     *
+     * @param array $items 详情行
+     * @return array 排序后的详情行
+     */
+    private function sort_detail_items( array $items ): array {
+        $registered = array_keys( wp_get_registered_image_subsizes() );
+        $size_order = array_flip( $registered );
+        $size_count = count( $registered );
+        $decorated  = array();
+
+        foreach ( $items as $index => $item ) {
+            $size_type = isset( $item['size_type'] ) ? (string) $item['size_type'] : '';
+
+            if ( 'backup' === $size_type ) {
+                $group_rank = 2;
+            } elseif ( ! empty( $item['is_fallback'] ) ) {
+                $group_rank = 1;
+            } else {
+                $group_rank = 0;
+            }
+
+            if ( 'full' === $size_type ) {
+                $size_rank = 0;
+            } elseif ( 'original_image' === $size_type ) {
+                $size_rank = 1;
+            } elseif ( isset( $size_order[ $size_type ] ) ) {
+                $size_rank = 2 + (int) $size_order[ $size_type ];
+            } else {
+                // 已不再注册的旧尺寸按原来的先后放在最后，彼此之间不打乱。
+                $size_rank = 2 + $size_count;
+            }
+
+            $decorated[] = array(
+                'item'       => $item,
+                'group_rank' => $group_rank,
+                'size_rank'  => $size_rank,
+                'index'      => $index,
+            );
+        }
+
+        usort(
+            $decorated,
+            static function ( array $a, array $b ): int {
+                if ( $a['group_rank'] !== $b['group_rank'] ) {
+                    return $a['group_rank'] <=> $b['group_rank'];
+                }
+
+                if ( $a['size_rank'] !== $b['size_rank'] ) {
+                    return $a['size_rank'] <=> $b['size_rank'];
+                }
+
+                return $a['index'] <=> $b['index'];
+            }
+        );
+
+        return array_column( $decorated, 'item' );
     }
 
     /**
