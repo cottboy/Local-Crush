@@ -65,12 +65,12 @@ class Local_Crush_Media_Library {
         <style>
             /* WordPress 后台表格是固定列宽模式，列宽只能写具体数值，写"按内容伸缩"浏览器直接忽略。
                注意表格单元格的 width 不含左右内边距（各 10px），所以这里写的正好是两栏的宽度和：
-               左栏 130 + 间距 4 + 右栏 130 = 264。右栏 130 是主按钮加恢复按钮时较宽那一行的宽度：
-               继续压缩 62 + 间距 4 + 恢复原图 62（小号按钮＝11px 字 4 个＝44，加左右各 8px
-               内边距和 1px 边框，共 62），按钮刚好顶到右边缘，剩下的只有 WP 自己那 10px 格子内边距。
+               左栏 130 + 间距 4 + 右栏 62 = 196。右栏 62 是按钮最多四个字时的宽度：
+               继续压缩／恢复原图＝11px 字 4 个＝44，加左右各 8px 内边距和 1px 边框，共 62。
+               按钮刚好顶到右边缘，剩下的只有 WP 自己那 10px 格子内边距。
                多出来的宽度会留给左边的文件名栏，所以右边缘不会再留白 */
             .wp-list-table .column-local_crush {
-                width: 264px;
+                width: 196px;
             }
 
             /* 左右两栏宽度写死，每行的文字左边缘、按钮左边缘才对齐在一条竖线上，
@@ -78,7 +78,7 @@ class Local_Crush_Media_Library {
                文字长过 130px 会自动换行，只会多占一行，不会撑破表格，所以换语言也不会散架 */
             .wp-list-table .column-local_crush .local-crush-status {
                 display: grid;
-                grid-template-columns: 130px 130px;
+                grid-template-columns: 130px 62px;
                 align-items: center;
                 gap: 0 4px;
             }
@@ -87,18 +87,12 @@ class Local_Crush_Media_Library {
                 min-width: 0;
             }
 
-            /* 按钮每行几个由 PHP 直接分好（render_action_buttons 里按两个一组切），
-               这里只负责把行竖着排、行内按钮按文字大小排，绝不去拉伸按钮 */
+            /* 按钮一行一个竖着排，按文字大小走，绝不去拉伸按钮 */
             .local-crush-actions {
                 display: flex;
                 flex-direction: column;
                 gap: 4px;
                 align-items: flex-start;
-            }
-
-            .local-crush-actions-row {
-                display: flex;
-                gap: 4px;
             }
 
             .local-crush-storage {
@@ -425,7 +419,7 @@ class Local_Crush_Media_Library {
      * @param bool   $can_restore    是否可恢复
      */
     private function render_action_buttons( int $attachment_id, string $primary_action, string $primary_label, bool $can_restore ) {
-        // 先把按钮都收集起来，再按两个一组分行，行数就不受按钮文字宽窄影响
+        // 先把按钮都收集起来，再一行一个排下去
         $buttons = array();
 
         if ( '' !== $primary_action ) {
@@ -446,14 +440,10 @@ class Local_Crush_Media_Library {
         }
         ?>
         <div class="local-crush-actions">
-            <?php foreach ( array_chunk( $buttons, 2 ) as $row_buttons ) : ?>
-                <div class="local-crush-actions-row">
-                    <?php foreach ( $row_buttons as $button ) : ?>
-                        <button type="button" class="button button-small local-crush-btn" data-action="<?php echo esc_attr( $button['action'] ); ?>" data-attachment-id="<?php echo esc_attr( $attachment_id ); ?>">
-                            <?php echo esc_html( $button['label'] ); ?>
-                        </button>
-                    <?php endforeach; ?>
-                </div>
+            <?php foreach ( $buttons as $button ) : ?>
+                <button type="button" class="button button-small local-crush-btn" data-action="<?php echo esc_attr( $button['action'] ); ?>" data-attachment-id="<?php echo esc_attr( $attachment_id ); ?>">
+                    <?php echo esc_html( $button['label'] ); ?>
+                </button>
             <?php endforeach; ?>
         </div>
         <?php

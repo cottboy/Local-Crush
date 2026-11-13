@@ -230,16 +230,7 @@
             var i18n = this.i18n;
             var rows = details.items || [];
             var attachmentId = parseInt(details.attachment_id, 10) || 0;
-            var hasFallback = false;
             var html = '';
-
-            // 有旧格式回退才显示整图删除按钮，没有就不占位置
-            $.each(rows, function(index, row) {
-                if (row.is_fallback) {
-                    hasFallback = true;
-                    return false;
-                }
-            });
 
             html += '<div class="local-crush-details-modal" role="dialog" aria-modal="true">';
             html += '<div class="local-crush-details-dialog">';
@@ -252,10 +243,8 @@
             html += '<div class="local-crush-details-toolbar">';
             html += '<button type="button" class="button button-small local-crush-details-op" data-operation="generate-missing" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnGenerateMissing) + '</button>';
             html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-disabled" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnDeleteDisabled) + '</button>';
+            html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-fallback" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.deleteFallback) + '</button>';
             html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-all" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnDeleteAllSizes) + '</button>';
-            if (hasFallback) {
-                html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-fallback" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.deleteFallback) + '</button>';
-            }
             html += '<label class="local-crush-switch">';
             html += '<input type="checkbox" data-attachment-id="' + attachmentId + '"' + (details.thumbnails_disabled ? ' checked' : '') + '>';
             html += '<span class="local-crush-switch-track"><span class="local-crush-switch-thumb"></span></span>';
