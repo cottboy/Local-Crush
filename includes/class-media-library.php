@@ -218,8 +218,14 @@ class Local_Crush_Media_Library {
                 white-space: nowrap;
             }
 
+            /* 删除按钮改成灰色，不抢眼；悬停时加深一点提示可以点 */
             .local-crush-details-table .local-crush-size-delete {
-                color: #b32d2e;
+                color: #646970;
+            }
+
+            .local-crush-details-table .local-crush-size-delete:hover,
+            .local-crush-details-table .local-crush-size-delete:focus {
+                color: #1d2327;
             }
 
             .local-crush-details-table {

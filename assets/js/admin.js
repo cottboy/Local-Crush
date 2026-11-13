@@ -298,7 +298,7 @@
                     html += '<td class="local-crush-details-actions">';
 
                     if (canDelete) {
-                        html += '<button type="button" class="button-link button-link-delete local-crush-size-delete"'
+                        html += '<button type="button" class="button-link local-crush-size-delete"'
                             + ' data-attachment-id="' + attachmentId + '"'
                             + ' data-operation="' + rowOperation + '"'
                             + ' data-size="' + self.escapeAttr(row.size_type) + '"'
