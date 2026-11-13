@@ -773,10 +773,10 @@ class Local_Crush_Media_Library {
                 }
 
                 if ( empty( $result['deleted'] ) && empty( $result['removed'] ) ) {
-                    wp_send_json_error( array( 'message' => __( '没有未勾选尺寸的缩略图需要删除', 'local-crush' ) ) );
+                    wp_send_json_error( array( 'message' => __( '没有需要删除的未勾选或已失效尺寸缩略图', 'local-crush' ) ) );
                 }
 
-                wp_send_json_success( array( 'message' => __( '未勾选尺寸的缩略图已删除', 'local-crush' ) ) );
+                wp_send_json_success( array( 'message' => __( '未勾选及已失效尺寸的缩略图已删除', 'local-crush' ) ) );
 
             case 'delete-backup':
                 $result = local_crush()->processor->delete_attachment_backups( $attachment_id );

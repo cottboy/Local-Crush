@@ -1238,7 +1238,7 @@ class Local_Crush_Settings {
                                         ?>
                                     </label>
                                 <?php endforeach; ?>
-                                <p class="description"><?php esc_html_e( '取消勾选的尺寸在上传图片时不再生成；已经存在的文件用下方“删除未勾选尺寸的缩略图”清理。以后新注册的尺寸默认勾选。', 'local-crush' ); ?></p>
+                                <p class="description"><?php esc_html_e( '取消勾选的尺寸在上传图片时不再生成；已经存在的文件，以及主题或插件后来取消注册的旧尺寸，都可以用下方“删除未勾选尺寸的缩略图”一并清理。以后新注册的尺寸默认勾选。', 'local-crush' ); ?></p>
                             <?php endif; ?>
                         </div>
                     </td>
@@ -1308,7 +1308,7 @@ class Local_Crush_Settings {
                     </button>
                 </td>
                 <td style="padding: 10px 0;">
-                    <span class="description"><?php esc_html_e( '删除未勾选尺寸已存在的缩略图，全站指向它们的图片链接会改到面积最接近的现有尺寸；若关闭了自动缩放，或现有 -scaled 缩放图与阈值不符，也会删除缩放图让主图退回原图', 'local-crush' ); ?></span>
+                    <span class="description"><?php esc_html_e( '只保留当前已勾选的尺寸：未勾选的、已不再注册的以及其他多余尺寸全部删除，全站指向它们的图片链接会改到面积最接近的现有尺寸；若关闭了自动缩放，或现有 -scaled 缩放图与阈值不符，也会删除缩放图让主图退回原图', 'local-crush' ); ?></span>
                 </td>
             </tr>
             <tr>

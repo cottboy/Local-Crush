@@ -682,7 +682,7 @@ msgid "参数按压缩路径分组：只有整条工具链完全一致的路径�
 msgstr ""
 
 #: includes/class-settings.php:1241
-msgid "取消勾选的尺寸在上传图片时不再生成；已经存在的文件用下方“删除未勾选尺寸的缩略图”清理。以后新注册的尺寸默认勾选。"
+msgid "取消勾选的尺寸在上传图片时不再生成；已经存在的文件，以及主题或插件后来取消注册的旧尺寸，都可以用下方“删除未勾选尺寸的缩略图”一并清理。以后新注册的尺寸默认勾选。"
 msgstr ""
 
 #: includes/class-settings.php:582
@@ -837,7 +837,7 @@ msgstr ""
 
 #, php-format
 #: includes/class-task.php:1206
-msgid "已删除 %1$d 个未勾选尺寸的缩略图（涉及 %2$d 个附件），替换了 %3$d 个图片链接"
+msgid "已删除 %1$d 个未勾选及已失效尺寸的缩略图（涉及 %2$d 个附件），替换了 %3$d 个图片链接"
 msgstr ""
 
 #, php-format
@@ -1258,7 +1258,7 @@ msgid "服务器缺少 DOM 扩展，无法安全处理 SVG"
 msgstr ""
 
 #: includes/class-media-library.php:779
-msgid "未勾选尺寸的缩略图已删除"
+msgid "未勾选及已失效尺寸的缩略图已删除"
 msgstr ""
 
 #: includes/class-media-library.php:325 includes/class-processor.php:417
@@ -1351,7 +1351,7 @@ msgid "没有可重试的失败记录"
 msgstr ""
 
 #: includes/class-media-library.php:776
-msgid "没有未勾选尺寸的缩略图需要删除"
+msgid "没有需要删除的未勾选或已失效尺寸缩略图"
 msgstr ""
 
 #: includes/class-media-library.php:843
@@ -1423,7 +1423,7 @@ msgid "确定要删除此图片的备份吗？删除后将无法恢复原图。"
 msgstr ""
 
 #: includes/class-local-crush.php:275
-msgid "确定要删除这张图片未勾选尺寸的缩略图吗？全站指向这些尺寸的链接会改到面积最接近的现有尺寸；关闭了自动缩放或缩放图与阈值不符时，也会删除缩放图让主图退回原图。此操作不可撤销。"
+msgid "确定要删除这张图片所有未勾选及已不再注册的缩略图吗？全站指向这些尺寸的链接会改到面积最接近的现有尺寸；关闭了自动缩放或缩放图与阈值不符时，也会删除缩放图让主图退回原图。此操作不可撤销。"
 msgstr ""
 
 #: includes/class-local-crush.php:274
@@ -1712,7 +1712,7 @@ msgid "图片链接替换失败，已保留原文件"
 msgstr ""
 
 #: includes/class-local-crush.php:279
-msgid "确定要删除未勾选尺寸的缩略图吗？全站指向这些尺寸的链接会改到面积最接近的现有尺寸；关闭了自动缩放或缩放图与阈值不符时，也会删除缩放图让主图退回原图。此操作不可撤销。"
+msgid "确定要删除所有未勾选及已不再注册的缩略图吗？全站指向这些尺寸的链接会改到面积最接近的现有尺寸；关闭了自动缩放或缩放图与阈值不符时，也会删除缩放图让主图退回原图。此操作不可撤销。"
 msgstr ""
 
 #: includes/class-settings.php:1291
@@ -1720,7 +1720,7 @@ msgid "删除媒体库中转换后保留的旧格式回退文件，并把全站�
 msgstr ""
 
 #: includes/class-settings.php:1311
-msgid "删除未勾选尺寸已存在的缩略图，全站指向它们的图片链接会改到面积最接近的现有尺寸；若关闭了自动缩放，或现有 -scaled 缩放图与阈值不符，也会删除缩放图让主图退回原图"
+msgid "只保留当前已勾选的尺寸：未勾选的、已不再注册的以及其他多余尺寸全部删除，全站指向它们的图片链接会改到面积最接近的现有尺寸；若关闭了自动缩放，或现有 -scaled 缩放图与阈值不符，也会删除缩放图让主图退回原图"
 msgstr ""
 
 #: includes/class-settings.php:1321

@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * 缩略图管理类
  *
- * 按设置决定生成哪些尺寸的缩略图、调整大图缩放阈值，并负责清理未勾选尺寸的旧文件、补生成缺失的尺寸
+ * 按设置决定生成哪些尺寸的缩略图、调整大图缩放阈值，并负责清理未启用尺寸的旧文件、补生成缺失的尺寸
  */
 class Local_Crush_Thumbnail_Manager {
 
@@ -56,13 +56,16 @@ class Local_Crush_Thumbnail_Manager {
     }
 
     /**
-     * 判断某个缩略图尺寸是否已勾选生成
+     * 判断某个缩略图尺寸是否当前启用
+     *
+     * 白名单口径：必须仍处于注册状态，并且没有被取消勾选。
+     * 主题或插件已经不再注册的旧尺寸不算启用，清理时会被一并删除。
      *
      * @param string $size_name 尺寸名
      * @return bool
      */
     public static function is_size_enabled( string $size_name ): bool {
-        return ! in_array( $size_name, self::disabled_sizes(), true );
+        return in_array( $size_name, self::enabled_sizes(), true );
     }
 
     /**
@@ -159,9 +162,10 @@ class Local_Crush_Thumbnail_Manager {
     }
 
     /**
-     * 删除单个附件中未勾选尺寸的缩略图
+     * 删除单个附件中所有未启用的缩略图尺寸
      *
-     * 先更新正文链接，成功后再改元数据和删文件；正文更新失败时不做任何清理。
+     * 只保留当前已勾选的尺寸：未勾选的、已不再注册的、以及元数据里其他多余尺寸
+     * 全部删除。先更新正文链接，成功后再改元数据和删文件；正文更新失败时不做任何清理。
      * 文件仍被保留尺寸共用时只摘元数据条目，文件与它的旧格式回退都保留。
      *
      * @param int $attachment_id 附件 ID
@@ -233,7 +237,7 @@ class Local_Crush_Thumbnail_Manager {
      * 删除缩略图的统一实现
      *
      * @param int      $attachment_id 附件 ID
-     * @param string   $mode           disabled（按设置删未勾选）/ sizes（只删指定尺寸）/ all（删全部）
+     * @param string   $mode           disabled（白名单清理，只留已勾选）/ sizes（只删指定尺寸）/ all（删全部）
      * @param string[] $size_names     mode 为 sizes 时要删的尺寸名
      * @return array|null deleted、replaced、removed；锁被占用或元数据写入失败时返回 null
      */
@@ -510,6 +514,8 @@ class Local_Crush_Thumbnail_Manager {
 
     /**
      * 判断一个尺寸是不是这次要删的对象
+     *
+     * disabled 模式采用白名单：只有当前已勾选的尺寸能留下，其余一律删除。
      *
      * @param string   $mode       disabled / sizes / all
      * @param string   $size_name  尺寸名

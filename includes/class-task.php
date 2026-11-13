@@ -771,7 +771,7 @@ class Local_Crush_Task {
     }
 
     /**
-     * 删除一个附件里未勾选尺寸的缩略图
+     * 删除一个附件里所有未启用的缩略图尺寸
      *
      * @param int   $attachment_id 附件 ID
      * @param array $outcome       结果骨架
@@ -1203,7 +1203,7 @@ class Local_Crush_Task {
             case 'delete_thumbnails':
                 $summary = sprintf(
                     /* translators: 1: 删除的文件数, 2: 影响的附件数, 3: 替换的链接数 */
-                    __( '已删除 %1$d 个未勾选尺寸的缩略图（涉及 %2$d 个附件），替换了 %3$d 个图片链接', 'local-crush' ),
+                    __( '已删除 %1$d 个未勾选及已失效尺寸的缩略图（涉及 %2$d 个附件），替换了 %3$d 个图片链接', 'local-crush' ),
                     $files,
                     (int) $task['success'],
                     isset( $detail['replaced'] ) ? (int) $detail['replaced'] : 0
