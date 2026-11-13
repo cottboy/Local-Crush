@@ -118,7 +118,7 @@ class Local_Crush_Media_Library {
             }
 
             .local-crush-details-dialog {
-                width: min(900px, 100%);
+                width: min(1200px, 100%);
                 max-height: min(720px, 90vh);
                 overflow: auto;
                 background: #fff;
