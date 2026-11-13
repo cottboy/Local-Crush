@@ -128,10 +128,6 @@
                 this.compressSingle(attachmentId, $btn);
             } else if (action === 'restore') {
                 this.restoreSingle(attachmentId, $btn);
-            } else if (action === 'delete-backup') {
-                this.deleteBackup(attachmentId, $btn);
-            } else if (action === 'delete-fallback') {
-                this.deleteFallback(attachmentId, $btn);
             }
         },
 
@@ -234,7 +230,16 @@
             var i18n = this.i18n;
             var rows = details.items || [];
             var attachmentId = parseInt(details.attachment_id, 10) || 0;
+            var hasFallback = false;
             var html = '';
+
+            // 有旧格式回退才显示整图删除按钮，没有就不占位置
+            $.each(rows, function(index, row) {
+                if (row.is_fallback) {
+                    hasFallback = true;
+                    return false;
+                }
+            });
 
             html += '<div class="local-crush-details-modal" role="dialog" aria-modal="true">';
             html += '<div class="local-crush-details-dialog">';
@@ -248,6 +253,9 @@
             html += '<button type="button" class="button button-small local-crush-details-op" data-operation="generate-missing" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnGenerateMissing) + '</button>';
             html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-disabled" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnDeleteDisabled) + '</button>';
             html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-all" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnDeleteAllSizes) + '</button>';
+            if (hasFallback) {
+                html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-fallback" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.deleteFallback) + '</button>';
+            }
             html += '<label class="local-crush-switch">';
             html += '<input type="checkbox" data-attachment-id="' + attachmentId + '"' + (details.thumbnails_disabled ? ' checked' : '') + '>';
             html += '<span class="local-crush-switch-track"><span class="local-crush-switch-thumb"></span></span>';
@@ -393,13 +401,15 @@
                 return;
             }
 
-            // 补生成不是删除，不问；删除未勾选尺寸和删除全部尺寸都动磁盘文件，先让用户确认
+            // 补生成不是删除，不问；删除未勾选尺寸、删除全部尺寸和删除兼容格式回退都动磁盘文件，先让用户确认
             var confirmText = '';
 
             if (operation === 'delete-disabled') {
                 confirmText = this.i18n.confirmDeleteDisabledSingle;
             } else if (operation === 'delete-all') {
                 confirmText = this.i18n.confirmDeleteAllSizes;
+            } else if (operation === 'delete-fallback') {
+                confirmText = this.i18n.confirmDeleteFallback;
             }
 
             this.runDetailsAction(attachmentId, { operation: operation }, confirmText, $btn);
@@ -543,74 +553,6 @@
                 error: function() {
                     alert(self.i18n.error);
                     $btn.prop('disabled', false).text($btn.data('original-label'));
-                }
-            });
-        },
-
-        /**
-         * 删除单张图片的备份
-         */
-        deleteBackup: function(attachmentId, $btn) {
-            var self = this;
-
-            if (!confirm(this.i18n.confirmDeleteBackup)) {
-                $btn.prop('disabled', false).text(self.i18n.deleteBackup);
-                return;
-            }
-
-            $.ajax({
-                url: this.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'local_crush_delete_backup',
-                    nonce: this.nonce,
-                    attachment_id: attachmentId
-                },
-                success: function(response) {
-                    if (response.success) {
-                        location.reload();
-                    } else {
-                        alert(response.data.message || self.i18n.error);
-                        $btn.prop('disabled', false).text(self.i18n.deleteBackup);
-                    }
-                },
-                error: function() {
-                    alert(self.i18n.error);
-                    $btn.prop('disabled', false).text(self.i18n.deleteBackup);
-                }
-            });
-        },
-
-        /**
-         * 删除单张图片的兼容格式回退
-         */
-        deleteFallback: function(attachmentId, $btn) {
-            var self = this;
-
-            if (!confirm(this.i18n.confirmDeleteFallback)) {
-                $btn.prop('disabled', false).text(self.i18n.deleteFallback);
-                return;
-            }
-
-            $.ajax({
-                url: this.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'local_crush_delete_fallback',
-                    nonce: this.nonce,
-                    attachment_id: attachmentId
-                },
-                success: function(response) {
-                    if (response.success) {
-                        location.reload();
-                    } else {
-                        alert(response.data.message || self.i18n.error);
-                        $btn.prop('disabled', false).text(self.i18n.deleteFallback);
-                    }
-                },
-                error: function() {
-                    alert(self.i18n.error);
-                    $btn.prop('disabled', false).text(self.i18n.deleteFallback);
                 }
             });
         },

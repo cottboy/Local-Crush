@@ -37,8 +37,6 @@ class Local_Crush_Media_Library {
         add_action( 'wp_ajax_local_crush_compress_single', array( $this, 'ajax_compress_single' ) );
         add_action( 'wp_ajax_local_crush_get_details', array( $this, 'ajax_get_details' ) );
         add_action( 'wp_ajax_local_crush_restore', array( $this, 'ajax_restore' ) );
-        add_action( 'wp_ajax_local_crush_delete_backup', array( $this, 'ajax_delete_backup' ) );
-        add_action( 'wp_ajax_local_crush_delete_fallback', array( $this, 'ajax_delete_fallback' ) );
         add_action( 'wp_ajax_local_crush_attachment_action', array( $this, 'ajax_attachment_action' ) );
     }
 
@@ -67,12 +65,12 @@ class Local_Crush_Media_Library {
         <style>
             /* WordPress 后台表格是固定列宽模式，列宽只能写具体数值，写"按内容伸缩"浏览器直接忽略。
                注意表格单元格的 width 不含左右内边距（各 10px），所以这里写的正好是两栏的宽度和：
-               左栏 130 + 间距 4 + 右栏 172 = 306。右栏 172 是四个按钮分两行时较宽那一行的宽度：
-               删除备份 62 + 间距 4 + 删除兼容格式回退 106（小号按钮＝11px 字 8 个＝88，加左右各 8px
-               内边距和 1px 边框，共 106），按钮刚好顶到右边缘，剩下的只有 WP 自己那 10px 格子内边距。
+               左栏 130 + 间距 4 + 右栏 130 = 264。右栏 130 是主按钮加恢复按钮时较宽那一行的宽度：
+               继续压缩 62 + 间距 4 + 恢复原图 62（小号按钮＝11px 字 4 个＝44，加左右各 8px
+               内边距和 1px 边框，共 62），按钮刚好顶到右边缘，剩下的只有 WP 自己那 10px 格子内边距。
                多出来的宽度会留给左边的文件名栏，所以右边缘不会再留白 */
             .wp-list-table .column-local_crush {
-                width: 315px;
+                width: 264px;
             }
 
             /* 左右两栏宽度写死，每行的文字左边缘、按钮左边缘才对齐在一条竖线上，
@@ -80,7 +78,7 @@ class Local_Crush_Media_Library {
                文字长过 130px 会自动换行，只会多占一行，不会撑破表格，所以换语言也不会散架 */
             .wp-list-table .column-local_crush .local-crush-status {
                 display: grid;
-                grid-template-columns: 130px 172px;
+                grid-template-columns: 130px 130px;
                 align-items: center;
                 gap: 0 4px;
             }
@@ -294,20 +292,17 @@ class Local_Crush_Media_Library {
         $state      = $processor->get_attachment_state( $attachment_id );
         $has_backup = local_crush()->backup->has_backup( $attachment_id );
 
-        // 只有转换过的附件才会在媒体库里留下旧格式回退文件，且必须仍有对应的新格式文件。
-        $has_fallback = ! empty( local_crush()->output_processor->get_fallback_entries( $attachment_id ) );
-
         // 引用已还原但残留尚未清理时，恢复按钮仍要可用，否则用户无法重试收尾。
         $can_restore = $has_backup || $processor->has_pending_restore( $attachment_id );
 
         if ( 'complete' === $state['status'] ) {
-            $this->render_compressed_status( $attachment_id, $state, $has_backup, $can_restore, $has_fallback );
+            $this->render_compressed_status( $attachment_id, $state, $can_restore );
         } elseif ( 'partial' === $state['status'] ) {
-            $this->render_partial_status( $attachment_id, $state, $has_backup, $can_restore, $has_fallback );
+            $this->render_partial_status( $attachment_id, $state, $can_restore );
         } elseif ( 'failed' === $state['status'] ) {
-            $this->render_failed_status( $attachment_id, $can_restore, $has_backup, $has_fallback );
+            $this->render_failed_status( $attachment_id, $can_restore );
         } elseif ( 'skipped' === $state['status'] ) {
-            $this->render_skipped_status( $attachment_id, $can_restore, $has_backup, $has_fallback );
+            $this->render_skipped_status( $attachment_id, $can_restore );
         } else {
             $this->render_uncompressed_status( $attachment_id );
         }
@@ -325,7 +320,7 @@ class Local_Crush_Media_Library {
                 <span class="status-text"><?php esc_html_e( '未压缩', 'local-crush' ); ?></span>
                 <?php $this->render_storage_summary( $attachment_id ); ?>
             </div>
-            <?php $this->render_action_buttons( $attachment_id, 'compress', __( '压缩', 'local-crush' ), false, false, false ); ?>
+            <?php $this->render_action_buttons( $attachment_id, 'compress', __( '压缩', 'local-crush' ), false ); ?>
         </div>
         <?php
     }
@@ -335,17 +330,15 @@ class Local_Crush_Media_Library {
      *
      * @param int  $attachment_id 附件 ID
      * @param bool $can_restore   是否可恢复
-     * @param bool $has_backup    是否有备份
-     * @param bool $has_fallback  是否有兼容格式回退
      */
-    private function render_failed_status( int $attachment_id, bool $can_restore, bool $has_backup, bool $has_fallback ) {
+    private function render_failed_status( int $attachment_id, bool $can_restore ) {
         ?>
         <div class="local-crush-status" data-attachment-id="<?php echo esc_attr( $attachment_id ); ?>">
             <div class="local-crush-info">
                 <span class="status-text" style="color: #d63638;"><?php esc_html_e( '压缩失败', 'local-crush' ); ?></span>
                 <?php $this->render_storage_summary( $attachment_id ); ?>
             </div>
-            <?php $this->render_action_buttons( $attachment_id, 'compress', __( '重试', 'local-crush' ), $can_restore, $has_backup, $has_fallback ); ?>
+            <?php $this->render_action_buttons( $attachment_id, 'compress', __( '重试', 'local-crush' ), $can_restore ); ?>
         </div>
         <?php
     }
@@ -355,17 +348,15 @@ class Local_Crush_Media_Library {
      *
      * @param int  $attachment_id 附件 ID
      * @param bool $can_restore   是否可恢复
-     * @param bool $has_backup    是否有备份
-     * @param bool $has_fallback  是否有兼容格式回退
      */
-    private function render_skipped_status( int $attachment_id, bool $can_restore, bool $has_backup, bool $has_fallback ) {
+    private function render_skipped_status( int $attachment_id, bool $can_restore ) {
         ?>
         <div class="local-crush-status" data-attachment-id="<?php echo esc_attr( $attachment_id ); ?>">
             <div class="local-crush-info">
                 <span class="status-text" style="color: #dba617;"><?php esc_html_e( '已跳过', 'local-crush' ); ?></span>
                 <?php $this->render_storage_summary( $attachment_id ); ?>
             </div>
-            <?php $this->render_action_buttons( $attachment_id, 'compress', __( '重试', 'local-crush' ), $can_restore, $has_backup, $has_fallback ); ?>
+            <?php $this->render_action_buttons( $attachment_id, 'compress', __( '重试', 'local-crush' ), $can_restore ); ?>
         </div>
         <?php
     }
@@ -375,11 +366,9 @@ class Local_Crush_Media_Library {
      *
      * @param int   $attachment_id 附件 ID
      * @param array $state         统一状态
-     * @param bool  $has_backup    是否有备份
      * @param bool  $can_restore   是否可恢复
-     * @param bool  $has_fallback  是否有兼容格式回退
      */
-    private function render_partial_status( int $attachment_id, array $state, bool $has_backup, bool $can_restore, bool $has_fallback ) {
+    private function render_partial_status( int $attachment_id, array $state, bool $can_restore ) {
         ?>
         <div class="local-crush-status" data-attachment-id="<?php echo esc_attr( $attachment_id ); ?>">
             <div class="local-crush-info">
@@ -395,7 +384,7 @@ class Local_Crush_Media_Library {
                 </span>
                 <?php $this->render_storage_summary( $attachment_id ); ?>
             </div>
-            <?php $this->render_action_buttons( $attachment_id, 'compress', __( '继续压缩', 'local-crush' ), $can_restore, $has_backup, $has_fallback ); ?>
+            <?php $this->render_action_buttons( $attachment_id, 'compress', __( '继续压缩', 'local-crush' ), $can_restore ); ?>
         </div>
         <?php
     }
@@ -405,11 +394,9 @@ class Local_Crush_Media_Library {
      *
      * @param int   $attachment_id 附件 ID
      * @param array $stats         压缩统计
-     * @param bool  $has_backup    是否有备份
      * @param bool  $can_restore   是否可恢复
-     * @param bool  $has_fallback  是否有兼容格式回退
      */
-    private function render_compressed_status( int $attachment_id, array $stats, bool $has_backup, bool $can_restore, bool $has_fallback ) {
+    private function render_compressed_status( int $attachment_id, array $stats, bool $can_restore ) {
         ?>
         <div class="local-crush-status" data-attachment-id="<?php echo esc_attr( $attachment_id ); ?>">
             <div class="local-crush-info">
@@ -424,7 +411,7 @@ class Local_Crush_Media_Library {
                 </span>
                 <?php $this->render_storage_summary( $attachment_id ); ?>
             </div>
-            <?php $this->render_action_buttons( $attachment_id, '', '', $can_restore, $has_backup, $has_fallback ); ?>
+            <?php $this->render_action_buttons( $attachment_id, '', '', $can_restore ); ?>
         </div>
         <?php
     }
@@ -436,10 +423,8 @@ class Local_Crush_Media_Library {
      * @param string $primary_action 主按钮动作，空字符串表示没有主按钮
      * @param string $primary_label  主按钮文字
      * @param bool   $can_restore    是否可恢复
-     * @param bool   $has_backup     是否有备份
-     * @param bool   $has_fallback   是否有兼容格式回退
      */
-    private function render_action_buttons( int $attachment_id, string $primary_action, string $primary_label, bool $can_restore, bool $has_backup, bool $has_fallback ) {
+    private function render_action_buttons( int $attachment_id, string $primary_action, string $primary_label, bool $can_restore ) {
         // 先把按钮都收集起来，再按两个一组分行，行数就不受按钮文字宽窄影响
         $buttons = array();
 
@@ -453,18 +438,6 @@ class Local_Crush_Media_Library {
             $buttons[] = array(
                 'label'  => __( '恢复原图', 'local-crush' ),
                 'action' => 'restore',
-            );
-        }
-        if ( $has_backup ) {
-            $buttons[] = array(
-                'label'  => __( '删除备份', 'local-crush' ),
-                'action' => 'delete-backup',
-            );
-        }
-        if ( $has_fallback ) {
-            $buttons[] = array(
-                'label'  => __( '删除兼容格式回退', 'local-crush' ),
-                'action' => 'delete-fallback',
             );
         }
 
@@ -591,74 +564,6 @@ class Local_Crush_Media_Library {
     }
 
     /**
-     * AJAX: 删除单张图片的备份
-     */
-    public function ajax_delete_backup() {
-        // 验证 nonce
-        check_ajax_referer( 'local_crush_nonce', 'nonce' );
-
-        // 验证权限
-        if ( ! current_user_can( 'manage_options' ) ) {
-            wp_send_json_error( array( 'message' => __( '权限不足', 'local-crush' ) ) );
-        }
-
-        // 获取参数
-        $attachment_id = isset( $_POST['attachment_id'] ) ? absint( $_POST['attachment_id'] ) : 0;
-
-        if ( ! $attachment_id ) {
-            wp_send_json_error( array( 'message' => __( '无效的附件 ID', 'local-crush' ) ) );
-        }
-
-        $backup = local_crush()->backup;
-
-        // 检查是否有备份
-        if ( ! $backup->has_backup( $attachment_id ) ) {
-            wp_send_json_error( array( 'message' => __( '没有可用的备份', 'local-crush' ) ) );
-        }
-
-        // 删除备份
-        $result = local_crush()->processor->delete_attachment_backups( $attachment_id );
-
-        if ( $result['ok'] ) {
-            wp_send_json_success( array( 'message' => __( '备份已删除', 'local-crush' ) ) );
-        } else {
-            wp_send_json_error( array( 'message' => __( '删除失败', 'local-crush' ) ) );
-        }
-    }
-
-    /**
-     * AJAX: 删除单张图片的兼容格式回退
-     */
-    public function ajax_delete_fallback() {
-        // 验证 nonce
-        check_ajax_referer( 'local_crush_nonce', 'nonce' );
-
-        // 验证权限
-        if ( ! current_user_can( 'manage_options' ) ) {
-            wp_send_json_error( array( 'message' => __( '权限不足', 'local-crush' ) ) );
-        }
-
-        // 获取参数
-        $attachment_id = isset( $_POST['attachment_id'] ) ? absint( $_POST['attachment_id'] ) : 0;
-
-        if ( ! local_crush()->processor->is_valid_attachment( $attachment_id ) ) {
-            wp_send_json_error( array( 'message' => __( '无效的图片附件', 'local-crush' ) ) );
-        }
-
-        $result = local_crush()->processor->delete_fallback( $attachment_id );
-
-        if ( empty( $result['deleted_files'] ) ) {
-            wp_send_json_error( array( 'message' => __( '没有可删除的兼容格式回退', 'local-crush' ) ) );
-        }
-
-        if ( ! empty( $result['failed'] ) ) {
-            wp_send_json_error( array( 'message' => __( '部分兼容格式回退删除失败，请重试', 'local-crush' ) ) );
-        }
-
-        wp_send_json_success( array( 'message' => __( '兼容格式回退已删除', 'local-crush' ) ) );
-    }
-
-    /**
      * AJAX: 详情页的单图操作
      *
      * 详情页上新增的按钮全部走这一个入口，每个分支只做参数校验和结果播报，
@@ -743,6 +648,19 @@ class Local_Crush_Media_Library {
                 }
 
                 wp_send_json_success( array( 'message' => __( '旧格式图片已删除', 'local-crush' ) ) );
+
+            case 'delete-fallback':
+                $result = local_crush()->processor->delete_fallback( $attachment_id );
+
+                if ( ! empty( $result['failed'] ) ) {
+                    wp_send_json_error( array( 'message' => __( '部分兼容格式回退删除失败，请重试', 'local-crush' ) ) );
+                }
+
+                if ( empty( $result['deleted_files'] ) ) {
+                    wp_send_json_error( array( 'message' => __( '没有可删除的兼容格式回退', 'local-crush' ) ) );
+                }
+
+                wp_send_json_success( array( 'message' => __( '兼容格式回退已删除', 'local-crush' ) ) );
 
             case 'delete-all':
                 $result = $manager->delete_all_for_attachment( $attachment_id );

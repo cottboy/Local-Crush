@@ -443,12 +443,8 @@ msgstr ""
 msgid "删除 EXIF、GPS 拍摄位置、设备型号、作者与软件信息等隐私数据，对同格式压缩与格式转换的所有路径都生效。为了不让手机竖拍照片变横，会单独保留照片方向；ICC 色彩配置会尽量保留以免偏色；取消勾选则尽量保留元数据；经过解码再编码的路径（如 AVIF、动画 WebP）仍可能留不住全部元数据。"
 msgstr ""
 
-#: includes/class-local-crush.php:289 includes/class-media-library.php:466
+#: includes/class-local-crush.php:288
 msgid "删除兼容格式回退"
-msgstr ""
-
-#: includes/class-local-crush.php:288 includes/class-media-library.php:460
-msgid "删除备份"
 msgstr ""
 
 #: includes/class-media-library.php:625 includes/class-media-library.php:738 includes/class-media-library.php:785 includes/class-media-library.php:807

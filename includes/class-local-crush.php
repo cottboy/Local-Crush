@@ -285,7 +285,6 @@ class Local_Crush {
                     'confirmDeleteFallback'   => __( '确定要删除此图片的兼容格式回退吗？删除后不支持新格式的浏览器将直接加载新格式图片，此操作不可撤销。', 'local-crush' ),
                     'confirmDeleteAllFallbacks' => __( '确定要删除所有兼容格式回退吗？删除后不支持新格式的浏览器将直接加载新格式图片，此操作不可撤销。', 'local-crush' ),
                     'confirmDeleteAllOriginals' => __( '确定要删除所有未缩放的原始大图吗？只处理生成过 -scaled 缩放图的图片，格式转换后的那份和它的旧格式回退文件会一起删除，媒体库主图仍是 -scaled 图。此操作不涉及备份，没有备份的图片删除后无法恢复，且不可撤销。', 'local-crush' ),
-                    'deleteBackup'            => __( '删除备份', 'local-crush' ),
                     'deleteFallback'          => __( '删除兼容格式回退', 'local-crush' ),
                     'processing'              => __( '处理中...', 'local-crush' ),
                     'taskRunning'             => __( '执行中', 'local-crush' ),
