@@ -348,11 +348,9 @@ class Local_Crush_Thumbnail_Manager {
             $targets   = array();
 
             foreach ( $victims as $size_name => $size_data ) {
-                if ( isset( $kept_paths[ $this->normalized_path( $size_data['file'] ) ] ) ) {
-                    continue;
-                }
-
-                if ( file_exists( $size_data['file'] ) ) {
+                // 共用文件还被保留下来的尺寸使用，文件本身不能删
+                if ( ! isset( $kept_paths[ $this->normalized_path( $size_data['file'] ) ] )
+                    && file_exists( $size_data['file'] ) ) {
                     $deletions[ $size_name ] = $size_data['file'];
                 }
 
@@ -365,14 +363,63 @@ class Local_Crush_Thumbnail_Manager {
 
             // 兼容格式不写进附件元数据，必须按转换映射找到同尺寸的旧文件。
             // 这里不看“兼容格式回退”开关：开关关闭后，磁盘上仍可能留有旧文件。
-            // 只看真正要删文件的尺寸：共用文件没删，它的旧格式回退同样不能动。
-            $fallback_by_size = array();
-            foreach ( local_crush()->output_processor->get_fallback_entries( $attachment_id ) as $entry ) {
+            // 不能要求新格式文件还在：它异常丢失时，旧格式那份同样属于这个尺寸，
+            // 必须一起清掉，否则映射一删就再也找不到它。
+            // 还被其他尺寸的映射指着的旧文件一律不动。
+            $output_entries  = local_crush()->output_processor->get_output_entries( $attachment_id );
+            $protected_paths = $kept_paths;
+
+            if ( ! empty( $metadata['file'] ) ) {
+                $protected_paths[ $this->normalized_path( $base_dir . '/' . ltrim( wp_normalize_path( (string) $metadata['file'] ), '/' ) ) ] = true;
+            }
+
+            if ( ! empty( $metadata['original_image'] ) ) {
+                $protected_paths[ $this->normalized_path( $base_dir . '/' . $file_dir . '/' . wp_basename( (string) $metadata['original_image'] ) ) ] = true;
+            }
+
+            foreach ( $output_entries as $entry ) {
                 $size_type = isset( $entry['size_type'] ) ? (string) $entry['size_type'] : '';
 
-                if ( '' !== $size_type && isset( $deletions[ $size_type ] ) ) {
-                    $fallback_by_size[ $size_type ] = $entry;
+                if ( '' === $size_type || isset( $victims[ $size_type ] ) ) {
+                    continue;
                 }
+
+                foreach ( array( 'from', 'to' ) as $key ) {
+                    if ( ! empty( $entry[ $key ] ) ) {
+                        $protected_paths[ $this->normalized_path( (string) $entry[ $key ] ) ] = true;
+                    }
+                }
+
+                // 前台按“新格式文件名去掉最后一段扩展名”找旧格式回退，这个推导出来的路径也要保护。
+                if ( ! empty( $entry['to'] ) ) {
+                    $derived_fallback = $this->fallback_path_from_output( (string) $entry['to'] );
+
+                    if ( '' !== $derived_fallback ) {
+                        $protected_paths[ $this->normalized_path( $derived_fallback ) ] = true;
+                    }
+                }
+            }
+
+            $fallback_by_size = array();
+
+            foreach ( $output_entries as $entry ) {
+                $size_type = isset( $entry['size_type'] ) ? (string) $entry['size_type'] : '';
+
+                if ( '' === $size_type || ! isset( $victims[ $size_type ] ) || empty( $entry['from'] ) ) {
+                    continue;
+                }
+
+                $fallback = (string) $entry['from'];
+
+                if ( ! is_file( $fallback ) || is_link( $fallback ) || ! $this->is_safe_upload_path( $fallback ) ) {
+                    continue;
+                }
+
+                if ( isset( $protected_paths[ $this->normalized_path( $fallback ) ] ) ) {
+                    continue;
+                }
+
+                $fallback_by_size[ $size_type ] = $fallback;
             }
 
             $replacements = array();
@@ -384,7 +431,7 @@ class Local_Crush_Thumbnail_Manager {
 
                 if ( isset( $fallback_by_size[ $size_name ] ) ) {
                     $replacements[] = array(
-                        'from' => $fallback_by_size[ $size_name ]['from'],
+                        'from' => $fallback_by_size[ $size_name ],
                         'to'   => $target_path,
                     );
                 }
@@ -448,25 +495,6 @@ class Local_Crush_Thumbnail_Manager {
 
                 // 这个尺寸的文件都删了，转换映射也不再描述任何真实文件，一并清掉。
                 local_crush()->output_processor->remove_output_entry( $attachment_id, $size_name );
-
-                // 新格式删掉后，映射对应的旧格式缩略图也必须一起删掉。
-                if ( isset( $fallback_by_size[ $size_name ] ) ) {
-                    $fallback_path = $fallback_by_size[ $size_name ]['from'];
-
-                    if ( $this->is_safe_upload_path( $fallback_path ) && is_file( $fallback_path ) && ! is_link( $fallback_path ) ) {
-                        // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
-                        unlink( $fallback_path );
-                    }
-
-                    if ( ! file_exists( $fallback_path ) ) {
-                        $fallback_normalized = $this->normalized_path( $fallback_path );
-
-                        if ( ! isset( $deleted_fallback_paths[ $fallback_normalized ] ) ) {
-                            $deleted_fallback_paths[ $fallback_normalized ] = true;
-                            $deleted++;
-                        }
-                    }
-                }
             }
 
             // 共用文件被保留尺寸继续使用：文件与其映射对不动，但被删尺寸自己的
@@ -483,22 +511,34 @@ class Local_Crush_Thumbnail_Manager {
                 if ( $shared_record ) {
                     local_crush()->database->delete_record( $shared_record['id'] );
                 }
-
-                local_crush()->output_processor->forget_fallback_records( $attachment_id, array( $size_name ) );
             }
 
-            if ( ! empty( $fallback_by_size ) ) {
-                $deleted_fallback_sizes = array();
-
-                foreach ( $fallback_by_size as $size_name => $entry ) {
-                    if ( ! is_file( $entry['from'] ) && ! is_link( $entry['from'] ) ) {
-                        $deleted_fallback_sizes[] = $size_name;
-                    }
+            // 新格式文件在不在，旧格式那一份都要按映射清掉，否则映射删了就成了找不到的垃圾。
+            foreach ( $fallback_by_size as $fallback_path ) {
+                if ( ! $this->is_safe_upload_path( $fallback_path ) || is_link( $fallback_path ) ) {
+                    continue;
                 }
 
-                if ( ! empty( $deleted_fallback_sizes ) ) {
-                    local_crush()->output_processor->forget_fallback_records( $attachment_id, $deleted_fallback_sizes );
+                if ( file_exists( $fallback_path ) ) {
+                    // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+                    unlink( $fallback_path );
                 }
+
+                if ( file_exists( $fallback_path ) ) {
+                    continue;
+                }
+
+                $fallback_normalized = $this->normalized_path( $fallback_path );
+
+                if ( ! isset( $deleted_fallback_paths[ $fallback_normalized ] ) ) {
+                    $deleted_fallback_paths[ $fallback_normalized ] = true;
+                    $deleted++;
+                }
+            }
+
+            // 这些尺寸已经从附件里摘掉，旧格式副本的压缩记录一并清空。
+            if ( ! empty( $victims ) ) {
+                local_crush()->output_processor->forget_fallback_records( $attachment_id, array_keys( $victims ) );
             }
 
             return array(
@@ -977,6 +1017,35 @@ class Local_Crush_Thumbnail_Manager {
 
         // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- 刚生成的回退图，还没被任何地方引用。
         unlink( $path );
+    }
+
+    /**
+     * 按前台的双扩展名规则推导旧格式回退文件的绝对路径
+     *
+     * 新格式文件名去掉最后一段扩展名就是旧格式文件名；去掉后没有扩展名说明
+     * 不是转换产物，没有对应的旧格式文件。
+     *
+     * @param string $output_path 新格式文件绝对路径
+     * @return string 旧格式文件绝对路径，推导不出时返回空字符串
+     */
+    private function fallback_path_from_output( string $output_path ): string {
+        $path      = wp_normalize_path( $output_path );
+        $directory = dirname( $path );
+        $name      = wp_basename( $path );
+        $extension = pathinfo( $name, PATHINFO_EXTENSION );
+
+        if ( '' === $extension ) {
+            return '';
+        }
+
+        $stem = substr( $name, 0, strlen( $name ) - strlen( $extension ) - 1 );
+
+        // 去掉一段扩展名后还得自己带扩展名，才是“旧格式.新格式”的双扩展名文件。
+        if ( '' === $stem || '' === pathinfo( $stem, PATHINFO_EXTENSION ) ) {
+            return '';
+        }
+
+        return ( '.' === $directory ? '' : $directory . '/' ) . $stem;
     }
 
     /**
