@@ -1202,7 +1202,7 @@ class Local_Crush_Settings {
                             <input type="number" name="local_crush_general[image_size_threshold]" value="<?php echo esc_attr( Local_Crush_Settings::image_size_threshold() ); ?>" min="1" max="20000" step="1" class="small-text">
                             <?php esc_html_e( '像素', 'local-crush' ); ?>
                         </label>
-                        <p class="description" style="margin-top:0; margin-bottom:12px;"><?php esc_html_e( '勾选后，上传或补生成缩略图时，宽或高超过此阈值的主图会另存为 -scaled 缩放图并接管主文件，未缩放的源文件仍留在磁盘上；不勾选则关闭自动缩放，原图直接投入使用。压缩已有图片时不会改动缩放，改动缩放请用下方的“删除未勾选尺寸的缩略图”和“补生成缺失尺寸的缩略图”两个按钮。默认 2560，与 WordPress 默认一致。', 'local-crush' ); ?></p>
+                        <p class="description" style="margin-top:0; margin-bottom:12px;"><?php esc_html_e( '勾选后，上传或补生成缩略图时，宽或高超过此阈值的主图会另存为 -scaled 缩放图并接管主文件，未缩放的源文件仍留在磁盘上；不勾选则关闭自动缩放，原图直接投入使用。压缩已有图片时不会改动缩放，改动缩放请用下方的“删除多余的缩略图尺寸”和“补生成缺失的缩略图尺寸”两个按钮。默认 2560，与 WordPress 默认一致。', 'local-crush' ); ?></p>
                         <label style="display:block; margin-bottom:10px;">
                             <input type="checkbox" name="local_crush_general[delete_unscaled_original]" value="1" <?php checked( Local_Crush_Settings::delete_unscaled_original() ); ?>>
                             <?php esc_html_e( '压缩后删除未缩放的原始大图', 'local-crush' ); ?>
@@ -1238,7 +1238,7 @@ class Local_Crush_Settings {
                                         ?>
                                     </label>
                                 <?php endforeach; ?>
-                                <p class="description"><?php esc_html_e( '取消勾选的尺寸在上传图片时不再生成；已经存在的文件，以及主题或插件后来取消注册的旧尺寸，都可以用下方“删除未勾选尺寸的缩略图”一并清理。以后新注册的尺寸默认勾选。', 'local-crush' ); ?></p>
+                                <p class="description"><?php esc_html_e( '取消勾选的尺寸在上传图片时不再生成；已经存在的文件，以及主题或插件后来取消注册的旧尺寸，都可以用下方“删除多余的缩略图尺寸”一并清理。以后新注册的尺寸默认勾选。', 'local-crush' ); ?></p>
                             <?php endif; ?>
                         </div>
                     </td>
@@ -1304,7 +1304,7 @@ class Local_Crush_Settings {
             <tr>
                 <td style="padding: 10px 0;">
                     <button type="button" class="button" id="local-crush-delete-thumbnails">
-                        <?php esc_html_e( '删除未勾选尺寸的缩略图', 'local-crush' ); ?>
+                        <?php esc_html_e( '删除多余的缩略图尺寸', 'local-crush' ); ?>
                     </button>
                 </td>
                 <td style="padding: 10px 0;">
@@ -1314,7 +1314,7 @@ class Local_Crush_Settings {
             <tr>
                 <td style="padding: 10px 0;">
                     <button type="button" class="button" id="local-crush-generate-thumbnails">
-                        <?php esc_html_e( '补生成缺失尺寸的缩略图', 'local-crush' ); ?>
+                        <?php esc_html_e( '补生成缺失的缩略图尺寸', 'local-crush' ); ?>
                     </button>
                 </td>
                 <td style="padding: 10px 0;">

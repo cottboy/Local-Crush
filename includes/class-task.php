@@ -121,11 +121,11 @@ class Local_Crush_Task {
                 'source' => 'originals',
             ),
             'delete_thumbnails'   => array(
-                'label'  => __( '删除未勾选尺寸的缩略图', 'local-crush' ),
+                'label'  => __( '删除多余的缩略图尺寸', 'local-crush' ),
                 'source' => 'images',
             ),
             'generate_thumbnails' => array(
-                'label'  => __( '补生成缺失尺寸的缩略图', 'local-crush' ),
+                'label'  => __( '补生成缺失的缩略图尺寸', 'local-crush' ),
                 'source' => 'images',
             ),
             'unlock_thumbnails'   => array(
@@ -810,7 +810,7 @@ class Local_Crush_Task {
     }
 
     /**
-     * 给一个附件补生成缺失尺寸的缩略图
+     * 给一个附件补生成缺失的缩略图尺寸
      *
      * @param int   $attachment_id 附件 ID
      * @param array $outcome       结果骨架

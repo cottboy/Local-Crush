@@ -484,7 +484,7 @@ msgid "删除所有缩略图尺寸"
 msgstr ""
 
 #: includes/class-local-crush.php:266 includes/class-settings.php:1307 includes/class-task.php:124
-msgid "删除未勾选尺寸的缩略图"
+msgid "删除多余的缩略图尺寸"
 msgstr ""
 
 #: includes/class-animation.php:853 includes/class-animation.php:859
@@ -541,7 +541,7 @@ msgid "动画 WebP 编码（FFmpeg + webpmux）"
 msgstr ""
 
 #: includes/class-settings.php:1205
-msgid "勾选后，上传或补生成缩略图时，宽或高超过此阈值的主图会另存为 -scaled 缩放图并接管主文件，未缩放的源文件仍留在磁盘上；不勾选则关闭自动缩放，原图直接投入使用。压缩已有图片时不会改动缩放，改动缩放请用下方的“删除未勾选尺寸的缩略图”和“补生成缺失尺寸的缩略图”两个按钮。默认 2560，与 WordPress 默认一致。"
+msgid "勾选后，上传或补生成缩略图时，宽或高超过此阈值的主图会另存为 -scaled 缩放图并接管主文件，未缩放的源文件仍留在磁盘上；不勾选则关闭自动缩放，原图直接投入使用。压缩已有图片时不会改动缩放，改动缩放请用下方的“删除多余的缩略图尺寸”和“补生成缺失的缩略图尺寸”两个按钮。默认 2560，与 WordPress 默认一致。"
 msgstr ""
 
 #: includes/class-settings.php:1168
@@ -682,7 +682,7 @@ msgid "参数按压缩路径分组：只有整条工具链完全一致的路径�
 msgstr ""
 
 #: includes/class-settings.php:1241
-msgid "取消勾选的尺寸在上传图片时不再生成；已经存在的文件，以及主题或插件后来取消注册的旧尺寸，都可以用下方“删除未勾选尺寸的缩略图”一并清理。以后新注册的尺寸默认勾选。"
+msgid "取消勾选的尺寸在上传图片时不再生成；已经存在的文件，以及主题或插件后来取消注册的旧尺寸，都可以用下方“删除多余的缩略图尺寸”一并清理。以后新注册的尺寸默认勾选。"
 msgstr ""
 
 #: includes/class-settings.php:582
@@ -1539,7 +1539,7 @@ msgid "补生成失败"
 msgstr ""
 
 #: includes/class-local-crush.php:267 includes/class-settings.php:1317 includes/class-task.php:128
-msgid "补生成缺失尺寸的缩略图"
+msgid "补生成缺失的缩略图尺寸"
 msgstr ""
 
 #: includes/class-settings.php:1225
