@@ -603,11 +603,28 @@
 
                     self.renderTask(response.data);
                     self.startPolling();
+                    self.scrollToTaskPanel();
                 },
                 error: function() {
                     self.lockBatchButtons(false);
                     alert(self.i18n.error);
                 }
+            });
+        },
+
+        /**
+         * 面板一亮相就滚到页面最底下，省得每次都手动往下滑
+         */
+        scrollToTaskPanel: function() {
+            if (!this.$panel || !this.$panel.length) {
+                return;
+            }
+
+            window.requestAnimationFrame(function() {
+                window.scrollTo({
+                    top: document.documentElement.scrollHeight,
+                    behavior: 'smooth'
+                });
             });
         },
 
