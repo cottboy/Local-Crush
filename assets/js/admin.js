@@ -260,7 +260,7 @@
             html += '<th>' + this.escapeHtml(i18n.detailsOriginalFileSize) + '</th>';
             html += '<th>' + this.escapeHtml(i18n.detailsCurrentSize) + '</th>';
             html += '<th>' + this.escapeHtml(i18n.detailsSavedSize) + '</th>';
-            html += '<th>' + this.escapeHtml(i18n.detailsActions) + '</th>';
+            html += '<th class="local-crush-details-actions">' + this.escapeHtml(i18n.detailsActions) + '</th>';
             html += '</tr></thead><tbody>';
 
             if (!rows.length) {
