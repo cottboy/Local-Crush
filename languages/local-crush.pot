@@ -16,17 +16,17 @@ msgstr ""
 "X-Domain: local-crush\n"
 
 #, php-format
-#: includes/class-local-crush.php:308
+#: includes/class-local-crush.php:309
 msgid "%1$d 分 %2$d 秒"
 msgstr ""
 
 #, php-format
-#: includes/class-task.php:1172
+#: includes/class-task.php:1211
 msgid "%1$s - 成功: %2$d, 失败: %3$d"
 msgstr ""
 
 #, php-format
-#: includes/class-task.php:1161
+#: includes/class-task.php:1200
 msgid "%1$s - 成功: %2$d, 跳过: %3$d, 失败: %4$d"
 msgstr ""
 
@@ -36,13 +36,17 @@ msgid "%1$s（%2$s，%3$s）"
 msgstr ""
 
 #, php-format
-#: includes/class-local-crush.php:306
+#: includes/class-local-crush.php:307
 msgid "%d 秒"
 msgstr ""
 
 #, php-format
 #: compression/class-tool-base.php:659
 msgid "%s 不可用"
+msgstr ""
+
+#: includes/class-media-library.php:796
+msgid "-scaled 缩放图已删除，主图已退回未缩放原图"
 msgstr ""
 
 #: includes/class-settings.php:534
@@ -105,7 +109,7 @@ msgstr ""
 msgid "AVIF"
 msgstr ""
 
-#: includes/class-settings.php:1708
+#: includes/class-settings.php:1718
 msgid "AVIF 同格式压缩"
 msgstr ""
 
@@ -121,7 +125,7 @@ msgstr ""
 msgid "CRF（质量）"
 msgstr ""
 
-#: includes/class-settings.php:1696
+#: includes/class-settings.php:1706
 msgid "GD 扩展"
 msgstr ""
 
@@ -129,7 +133,7 @@ msgstr ""
 msgid "GIF"
 msgstr ""
 
-#: includes/class-settings.php:1704
+#: includes/class-settings.php:1714
 msgid "GIF 压缩"
 msgstr ""
 
@@ -149,7 +153,7 @@ msgstr ""
 msgid "JPEG XL"
 msgstr ""
 
-#: includes/class-settings.php:1710
+#: includes/class-settings.php:1720
 msgid "JPEG XL 压缩 / 全部转 JPEG XL"
 msgstr ""
 
@@ -157,7 +161,7 @@ msgstr ""
 msgid "JPEG XL 编码（cjxl）"
 msgstr ""
 
-#: includes/class-settings.php:1701
+#: includes/class-settings.php:1711
 msgid "JPEG 压缩"
 msgstr ""
 
@@ -173,7 +177,7 @@ msgstr ""
 msgid "JXL 同格式压缩（静图与动图）与 PNG / JPG / GIF / APNG 转 JXL 全部只调用 cjxl，工具链完全一样，所以共用这一组参数。cjxl 能直接读写动画 JXL，一条命令重编码，不需要拆帧。"
 msgstr ""
 
-#: includes/class-settings.php:907 includes/class-settings.php:908 includes/class-settings.php:1052
+#: includes/class-settings.php:1052 includes/class-settings.php:907 includes/class-settings.php:908
 msgid "Local Crush"
 msgstr ""
 
@@ -181,7 +185,7 @@ msgstr ""
 msgid "PNG"
 msgstr ""
 
-#: includes/class-settings.php:1703
+#: includes/class-settings.php:1713
 msgid "PNG / APNG 无损压缩"
 msgstr ""
 
@@ -189,7 +193,7 @@ msgstr ""
 msgid "PNG / APNG 无损压缩（oxipng）"
 msgstr ""
 
-#: includes/class-settings.php:1713
+#: includes/class-settings.php:1723
 msgid "PNG / JPG 转 AVIF"
 msgstr ""
 
@@ -197,7 +201,7 @@ msgstr ""
 msgid "PNG / JPG 转 AVIF（avifenc）"
 msgstr ""
 
-#: includes/class-settings.php:1702
+#: includes/class-settings.php:1712
 msgid "PNG 有损压缩"
 msgstr ""
 
@@ -221,7 +225,7 @@ msgstr ""
 msgid "SVG 内容不合法或包含危险代码"
 msgstr ""
 
-#: includes/class-settings.php:1705
+#: includes/class-settings.php:1715
 msgid "SVG 压缩"
 msgstr ""
 
@@ -233,7 +237,7 @@ msgstr ""
 msgid "WebP"
 msgstr ""
 
-#: includes/class-settings.php:1706
+#: includes/class-settings.php:1716
 msgid "WebP 压缩 / PNG·JPG 转 WebP"
 msgstr ""
 
@@ -277,7 +281,7 @@ msgstr ""
 msgid "pngquant（取消勾选时加 --nofs）"
 msgstr ""
 
-#: includes/class-settings.php:1507
+#: includes/class-settings.php:1517
 msgid "一行一个绝对路径。工具解压在别的文件夹时填这里；用包管理器装到 /usr/bin、/usr/local/bin 的不用填。"
 msgstr ""
 
@@ -293,11 +297,11 @@ msgstr ""
 msgid "不允许反序列化单例实例"
 msgstr ""
 
-#: includes/class-settings.php:1429
+#: includes/class-settings.php:1439
 msgid "不可用"
 msgstr ""
 
-#: includes/class-settings.php:1540
+#: includes/class-settings.php:1550
 msgid "不支持"
 msgstr ""
 
@@ -305,11 +309,15 @@ msgstr ""
 msgid "不支持的文件格式"
 msgstr ""
 
+#: includes/class-settings.php:1321
+msgid "为已勾选但缺失的尺寸补生成缩略图；若开启了自动缩放且主图超过阈值，还会生成或修正 -scaled 缩放图。不会重建已存在的缩略图，纯缩略图缺失也不改动图片链接"
+msgstr ""
+
 #: includes/class-settings.php:1176
 msgid "为转换后的图片提供旧格式回退"
 msgstr ""
 
-#: includes/class-processor.php:429
+#: includes/class-processor.php:526
 msgid "主图"
 msgstr ""
 
@@ -351,15 +359,15 @@ msgid "以下条目不是绝对路径，已忽略：%s"
 msgstr ""
 
 #, php-format
-#: includes/class-task.php:1273
+#: includes/class-task.php:1321
 msgid "任务已停止：本次共处理 %d 个附件，可以随时再执行一次继续处理剩余部分。"
 msgstr ""
 
-#: includes/class-local-crush.php:294
+#: includes/class-local-crush.php:295
 msgid "任务已停滞，点“继续执行”接着跑"
 msgstr ""
 
-#: includes/class-task.php:316
+#: includes/class-task.php:320
 msgid "任务还在执行，请先停止再关闭面板"
 msgstr ""
 
@@ -383,11 +391,11 @@ msgstr ""
 msgid "位深越高，渐变过渡越平滑，但文件更大、部分老设备可能不支持。8 位是所有浏览器都能显示的标准档；只有对渐变质量极其敏感时才值得选 10 / 12 位。"
 msgstr ""
 
-#: includes/class-settings.php:1527
+#: includes/class-settings.php:1537
 msgid "依赖"
 msgstr ""
 
-#: includes/class-settings.php:1504
+#: includes/class-settings.php:1514
 msgid "保存工具目录"
 msgstr ""
 
@@ -399,7 +407,7 @@ msgstr ""
 msgid "保留透明区域颜色"
 msgstr ""
 
-#: includes/class-settings.php:1371
+#: includes/class-settings.php:1381
 msgid "停止任务"
 msgstr ""
 
@@ -415,11 +423,19 @@ msgstr ""
 msgid "关闭"
 msgstr ""
 
+#: includes/class-settings.php:1331
+msgid "关闭所有图片详情里的“此图片不再压缩”开关；只解除锁定，不会立刻压缩图片，之后的压缩会恢复正常"
+msgstr ""
+
+#: includes/class-settings.php:1341
+msgid "关闭所有图片详情里的“此图片不再生成缩略图”开关；只解除锁定，不会立刻生成缩略图，之后的补生成和重新生成会恢复正常"
+msgstr ""
+
 #: includes/class-settings.php:1172
 msgid "兼容格式回退"
 msgstr ""
 
-#: includes/class-media-library.php:658
+#: includes/class-media-library.php:740
 msgid "兼容格式回退已删除"
 msgstr ""
 
@@ -443,16 +459,24 @@ msgstr ""
 msgid "删除 EXIF、GPS 拍摄位置、设备型号、作者与软件信息等隐私数据，对同格式压缩与格式转换的所有路径都生效。为了不让手机竖拍照片变横，会单独保留照片方向；ICC 色彩配置会尽量保留以免偏色；取消勾选则尽量保留元数据；经过解码再编码的路径（如 AVIF、动画 WebP）仍可能留不住全部元数据。"
 msgstr ""
 
-#: includes/class-local-crush.php:288
+#: includes/class-local-crush.php:290
 msgid "删除兼容格式回退"
 msgstr ""
 
-#: includes/class-media-library.php:625 includes/class-media-library.php:738 includes/class-media-library.php:785 includes/class-media-library.php:807
+#: includes/class-local-crush.php:266 includes/class-settings.php:1307 includes/class-task.php:124
+msgid "删除多余的缩略图尺寸"
+msgstr ""
+
+#: includes/class-media-library.php:720 includes/class-media-library.php:780 includes/class-media-library.php:802
 msgid "删除失败"
 msgstr ""
 
-#: includes/class-media-library.php:714 includes/class-media-library.php:751 includes/class-media-library.php:768 includes/class-media-library.php:794
+#: includes/class-media-library.php:696 includes/class-media-library.php:746 includes/class-media-library.php:763 includes/class-media-library.php:789
 msgid "删除失败，这张图片正在被其他操作占用"
+msgstr ""
+
+#: includes/class-settings.php:1291
+msgid "删除媒体库中转换后保留的旧格式回退文件，并把全站指向它们的图片链接改到新格式；删除后不支持新格式的浏览器将直接加载新格式图片"
 msgstr ""
 
 #: includes/class-settings.php:1287 includes/class-task.php:116
@@ -479,10 +503,6 @@ msgstr ""
 msgid "删除所有缩略图尺寸"
 msgstr ""
 
-#: includes/class-local-crush.php:266 includes/class-settings.php:1307 includes/class-task.php:124
-msgid "删除多余的缩略图尺寸"
-msgstr ""
-
 #: includes/class-animation.php:853 includes/class-animation.php:859
 msgid "动图处理命令执行失败"
 msgstr ""
@@ -500,7 +520,7 @@ msgstr ""
 msgid "动画 AVIF 先由 ffprobe 挑出完整动画轨道、avifdec 读原图信息，再交给 FFmpeg 的 libaom-av1 重压，比转 AVIF 多两步，所以单独一组。"
 msgstr ""
 
-#: includes/class-settings.php:1709
+#: includes/class-settings.php:1719
 msgid "动画 AVIF 同格式压缩"
 msgstr ""
 
@@ -508,7 +528,7 @@ msgstr ""
 msgid "动画 AVIF 同格式压缩（avifdec + ffmpeg + ffprobe）"
 msgstr ""
 
-#: includes/class-settings.php:1715
+#: includes/class-settings.php:1725
 msgid "动画 GIF / APNG 转 AVIF"
 msgstr ""
 
@@ -516,7 +536,7 @@ msgstr ""
 msgid "动画 GIF / APNG 转 AVIF（ffmpeg）"
 msgstr ""
 
-#: includes/class-settings.php:1712
+#: includes/class-settings.php:1722
 msgid "动画 GIF 转 WebP"
 msgstr ""
 
@@ -524,7 +544,7 @@ msgstr ""
 msgid "动画 GIF 转 WebP（gif2webp + webpmux）"
 msgstr ""
 
-#: includes/class-settings.php:1707
+#: includes/class-settings.php:1717
 msgid "动画 WebP 压缩 / APNG 转 WebP"
 msgstr ""
 
@@ -553,7 +573,7 @@ msgid "勾选：按下面的有损质量重新量化，文件明显更小；取�
 msgstr ""
 
 #, php-format
-#: includes/class-media-library.php:502
+#: includes/class-media-library.php:520
 msgid "占用 %s"
 msgstr ""
 
@@ -561,7 +581,7 @@ msgstr ""
 msgid "压完的质量低于这个数就不保存、直接保留原图，防止压得太糊。数越小，越多图会被压小（哪怕画质变差）；数越大越保守。0 表示不设下限。"
 msgstr ""
 
-#: includes/class-media-library.php:58 includes/class-media-library.php:328
+#: includes/class-media-library.php:350 includes/class-media-library.php:56
 msgid "压缩"
 msgstr ""
 
@@ -573,7 +593,7 @@ msgstr ""
 msgid "压缩前大小"
 msgstr ""
 
-#: includes/class-settings.php:1553
+#: includes/class-settings.php:1563
 msgid "压缩参数"
 msgstr ""
 
@@ -585,7 +605,7 @@ msgstr ""
 msgid "压缩后删除未缩放的原始大图"
 msgstr ""
 
-#: includes/class-converter.php:380 includes/class-converter.php:389 includes/class-media-library.php:345 includes/class-processor.php:410
+#: includes/class-converter.php:380 includes/class-converter.php:389 includes/class-media-library.php:368 includes/class-processor.php:507
 msgid "压缩失败"
 msgstr ""
 
@@ -597,7 +617,7 @@ msgstr ""
 msgid "压缩工具"
 msgstr ""
 
-#: compression/class-pngquant.php:90 compression/class-pngquant.php:104 compression/class-tool-base.php:775 includes/class-animation.php:809 includes/class-compressor.php:632 includes/class-converter.php:504 includes/class-converter.php:544
+#: compression/class-pngquant.php:104 compression/class-pngquant.php:90 compression/class-tool-base.php:775 includes/class-animation.php:809 includes/class-compressor.php:632 includes/class-converter.php:504 includes/class-converter.php:544
 msgid "压缩成功"
 msgstr ""
 
@@ -621,7 +641,7 @@ msgstr ""
 msgid "压缩结果为空文件，已保留原文件"
 msgstr ""
 
-#: includes/class-processor.php:681
+#: includes/class-processor.php:783
 msgid "压缩结果已生成，但附件引用或文章链接更新失败，图片仍指向原文件，可重新压缩继续提交"
 msgstr ""
 
@@ -657,11 +677,11 @@ msgstr ""
 msgid "压缩记录保存失败，已恢复原文件"
 msgstr ""
 
-#: includes/class-compressor.php:582 includes/class-converter.php:422 includes/class-converter.php:609 includes/class-processor.php:804
+#: includes/class-compressor.php:582 includes/class-converter.php:422 includes/class-converter.php:609 includes/class-processor.php:906
 msgid "压缩记录保存失败，请重新压缩"
 msgstr ""
 
-#: includes/class-processor.php:372
+#: includes/class-processor.php:405
 msgid "原图备份"
 msgstr ""
 
@@ -673,12 +693,16 @@ msgstr ""
 msgid "原图超过阈值时 WordPress 会另存一张 -scaled 缩放图当媒体库的全尺寸主图，未缩放的那份原始大图只躺在上传目录里，没有任何按钮能调用到。勾选后，手动或自动压缩结束时会把它删掉，只保留 -scaled 图，省下一份原始大图的磁盘占用；上传生图时不会删，删除只发生在压缩的时候。媒体库和文章里的图片都走 -scaled 图，不受影响，只有自己手动填过未缩放原图地址的地方会失效。开了“备份原图”的随时能恢复，没开备份的删掉就找不回来了；恢复原图时会按当前缩放设置重新生成 -scaled 图，并保留恢复出来的原图。本选项只对之后压缩的图片生效，之前已经压缩完的图片不会被清理。取消上面的“自动缩放超尺寸的主图”后本选项不起作用。"
 msgstr ""
 
-#: includes/class-settings.php:1555
+#: includes/class-settings.php:1565
 msgid "参数按压缩路径分组：只有整条工具链完全一致的路径才共用一节，其余各自独立，改了不会连带改到别的路径。输入框后面标的就是它实际传给哪个工具的哪个参数，取值也就是工具本身的取值范围，插件不做换算、不折算档位，你填多少就传多少；只有超出范围时保存时会收到该参数的边界值，免得把非法数字塞给工具。没列出来的参数一律不传，由工具用自己内部的默认值。每个参数的默认值都优先取压缩工具自己的默认值，工具没有默认值的（比如各编码器的质量）才用插件推荐的平衡值，每项说明里都写明了来头；拿不准全部保持默认就行。改动只影响之后的压缩，已经压好的图片不会自动重压。"
 msgstr ""
 
 #: includes/class-settings.php:1241
 msgid "取消勾选的尺寸在上传图片时不再生成；已经存在的文件，以及主题或插件后来取消注册的旧尺寸，都可以用下方“删除多余的缩略图尺寸”一并清理。以后新注册的尺寸默认勾选。"
+msgstr ""
+
+#: includes/class-settings.php:1311
+msgid "只保留当前已勾选的尺寸：未勾选的、已不再注册的以及其他多余尺寸全部删除，全站指向它们的图片链接会改到面积最接近的现有尺寸；若关闭了自动缩放，或现有 -scaled 缩放图与阈值不符，也会删除缩放图让主图退回原图"
 msgstr ""
 
 #: includes/class-settings.php:582
@@ -693,7 +717,7 @@ msgstr ""
 msgid "只管图片里半透明部分的清晰程度：数越大透明边缘越保真、文件越大；数越小透明边缘越毛、文件越小。默认 60 与上面的颜色质量保持一致，这也是 avifenc 不单独指定时的行为；半透明边缘特别多的图建议调高。"
 msgstr ""
 
-#: includes/class-settings.php:1427
+#: includes/class-settings.php:1437
 msgid "可用"
 msgstr ""
 
@@ -717,7 +741,7 @@ msgstr ""
 msgid "图标 / 小彩图"
 msgstr ""
 
-#: includes/class-processor.php:700
+#: includes/class-processor.php:802
 msgid "图片仅部分压缩完成，仍有文件需要重试"
 msgstr ""
 
@@ -725,19 +749,19 @@ msgstr ""
 msgid "图片元数据"
 msgstr ""
 
-#: includes/class-processor.php:703
+#: includes/class-processor.php:805
 msgid "图片压缩失败"
 msgstr ""
 
-#: includes/class-processor.php:697
+#: includes/class-processor.php:799
 msgid "图片压缩完成"
 msgstr ""
 
-#: includes/class-processor.php:549
+#: includes/class-processor.php:651
 msgid "图片已经压缩"
 msgstr ""
 
-#: includes/class-processor.php:545
+#: includes/class-processor.php:647
 msgid "图片已经压缩，已删除未缩放的原始大图"
 msgstr ""
 
@@ -745,7 +769,11 @@ msgstr ""
 msgid "图片详情"
 msgstr ""
 
-#: includes/class-media-library.php:718 includes/class-media-library.php:755 includes/class-media-library.php:772
+#: includes/class-converter.php:734
+msgid "图片链接替换失败，已保留原文件"
+msgstr ""
+
+#: includes/class-media-library.php:700 includes/class-media-library.php:750 includes/class-media-library.php:767
 msgid "图片链接替换失败，没有删除任何文件"
 msgstr ""
 
@@ -757,11 +785,11 @@ msgstr ""
 msgid "填 -1 表示永久保留；填天数则备份到期后自动删除，届时这张图将无法再恢复原图。0 无效，步进时会自动跳过 0。"
 msgstr ""
 
-#: includes/class-local-crush.php:290
+#: includes/class-local-crush.php:291
 msgid "处理中..."
 msgstr ""
 
-#: includes/class-processor.php:376
+#: includes/class-processor.php:409
 msgid "备份中"
 msgstr ""
 
@@ -769,11 +797,11 @@ msgstr ""
 msgid "备份原图"
 msgstr ""
 
-#: includes/class-media-library.php:623 includes/class-media-library.php:788
+#: includes/class-media-library.php:783
 msgid "备份已删除"
 msgstr ""
 
-#: includes/class-processor.php:373
+#: includes/class-processor.php:406
 msgid "备份文件"
 msgstr ""
 
@@ -782,19 +810,19 @@ msgid "天"
 msgstr ""
 
 #, php-format
-#: includes/class-task.php:1257
+#: includes/class-task.php:1305
 msgid "失败附件 ID：%s"
 msgstr ""
 
-#: includes/class-settings.php:1486
+#: includes/class-settings.php:1496
 msgid "安装方式：① 把可执行文件直接放进 /wp-content/local-crush-bin 目录；② 把工具所在文件夹填到下面的“工具目录”；③ 用包管理器安装（Linux 上 apt 会装到 /usr/bin、/usr/local/bin，插件会自动找）；④ Windows 上改系统 Path 后必须重启 PHP / Apache 才生效，Linux 上在 shell 里改 PATH 对 PHP 无效，建议用“工具目录”。"
 msgstr ""
 
-#: includes/class-settings.php:1453
+#: includes/class-settings.php:1463
 msgid "安装路径"
 msgstr ""
 
-#: includes/class-settings.php:1374
+#: includes/class-settings.php:1384
 msgid "完成"
 msgstr ""
 
@@ -806,97 +834,107 @@ msgstr ""
 msgid "将所有已压缩的图片恢复为原图"
 msgstr ""
 
-#: includes/class-settings.php:1451
+#: includes/class-settings.php:1461
 msgid "工具"
 msgstr ""
 
-#: includes/class-settings.php:1441
+#: includes/class-settings.php:1451
 msgid "工具状态"
 msgstr ""
 
-#: includes/class-settings.php:1501
+#: includes/class-settings.php:1511
 msgid "工具目录"
 msgstr ""
 
 #, php-format
-#: includes/class-task.php:1230
+#: includes/class-task.php:1269
 msgid "已为 %1$d 个附件补生成 %2$d 个缩略图（%3$d 个无需处理或已跳过，%4$d 个失败）"
 msgstr ""
 
-#: includes/class-local-crush.php:293
+#: includes/class-local-crush.php:294
 msgid "已停止"
 msgstr ""
 
-#: includes/class-media-library.php:694
+#: includes/class-media-library.php:649
 msgid "已停止为这张图片生成缩略图"
 msgstr ""
 
 #, php-format
-#: includes/class-task.php:1206
+#: includes/class-task.php:1245
 msgid "已删除 %1$d 个未勾选及已失效尺寸的缩略图（涉及 %2$d 个附件），替换了 %3$d 个图片链接"
 msgstr ""
 
 #, php-format
-#: includes/class-task.php:1220
+#: includes/class-task.php:1259
 msgid "已删除 %1$d 个未缩放的原始大图（涉及 %2$d 个附件），失败 %3$d 个"
 msgstr ""
 
 #, php-format
-#: includes/class-task.php:1192
+#: includes/class-task.php:1231
 msgid "已删除 %1$d 个附件上的 %2$d 个兼容格式回退文件，替换了 %3$d 个图片链接"
 msgstr ""
 
 #, php-format
-#: includes/class-task.php:1182
+#: includes/class-task.php:1221
 msgid "已删除 %1$d 个附件上的 %2$d 个备份文件，失败 %3$d 个"
 msgstr ""
 
-#: includes/class-processor.php:406
+#: includes/class-processor.php:503
 msgid "已压缩"
 msgstr ""
 
 #, php-format
-#: includes/class-media-library.php:420
+#: includes/class-media-library.php:452
 msgid "已压缩%s%%"
 msgstr ""
 
 #, php-format
-#: includes/class-local-crush.php:296
+#: includes/class-local-crush.php:297
 msgid "已处理 %1$d / %2$d"
 msgstr ""
 
-#: includes/class-settings.php:1463
+#: includes/class-settings.php:1473
 msgid "已安装"
 msgstr ""
 
-#: includes/class-local-crush.php:292
+#: includes/class-local-crush.php:293
 msgid "已完成"
 msgstr ""
 
-#: includes/class-media-library.php:695
+#: includes/class-media-library.php:650
 msgid "已恢复为这张图片生成缩略图"
 msgstr ""
 
-#: includes/class-task.php:346
+#: includes/class-task.php:350
 msgid "已有批量任务正在执行，请等它跑完，或先点“停止任务”"
 msgstr ""
 
 #, php-format
-#: includes/class-local-crush.php:298
+#: includes/class-local-crush.php:299
 msgid "已检查 %1$d / %2$d 张图片"
 msgstr ""
 
 #, php-format
-#: includes/class-local-crush.php:304
+#: includes/class-local-crush.php:305
 msgid "已用时 %s"
 msgstr ""
 
 #, php-format
-#: includes/class-media-library.php:836
+#: includes/class-media-library.php:831
 msgid "已补生成 %d 个缩略图"
 msgstr ""
 
-#: includes/class-media-library.php:365 includes/class-processor.php:414
+#, php-format
+#: includes/class-task.php:1289
+msgid "已解除 %1$d 个附件的“不再压缩”锁定，失败 %2$d 个"
+msgstr ""
+
+#, php-format
+#: includes/class-task.php:1280
+msgid "已解除 %1$d 个附件的“不再生成缩略图”锁定，失败 %2$d 个"
+msgstr ""
+
+#: includes/class-media-library.php:391 includes/class-processor.php:511
 msgid "已跳过"
 msgstr ""
 
@@ -924,11 +962,11 @@ msgstr ""
 msgid "当前工具无法完整处理这张动画，已保留原文件"
 msgstr ""
 
-#: includes/class-processor.php:344
+#: includes/class-processor.php:377
 msgid "当前文件"
 msgstr ""
 
-#: includes/class-media-library.php:828
+#: includes/class-media-library.php:823
 msgid "当前格式没有可用的原图，无法补生成缩略图"
 msgstr ""
 
@@ -936,15 +974,15 @@ msgstr ""
 msgid "当前没有注册额外的缩略图尺寸。"
 msgstr ""
 
-#: includes/class-media-library.php:454
+#: includes/class-media-library.php:488
 msgid "恢复原图"
 msgstr ""
 
-#: includes/class-media-library.php:589
+#: includes/class-media-library.php:612
 msgid "恢复失败"
 msgstr ""
 
-#: includes/class-media-library.php:587
+#: includes/class-media-library.php:610
 msgid "恢复成功"
 msgstr ""
 
@@ -957,11 +995,11 @@ msgid "恢复映射保存失败，已保留原文件"
 msgstr ""
 
 #, php-format
-#: includes/class-local-crush.php:300
+#: includes/class-local-crush.php:301
 msgid "成功 %1$d，跳过 %2$d，失败 %3$d"
 msgstr ""
 
-#: includes/class-animation.php:1399 includes/class-settings.php:1748
+#: includes/class-animation.php:1399 includes/class-settings.php:1758
 msgid "或"
 msgstr ""
 
@@ -969,7 +1007,7 @@ msgstr ""
 msgid "所有 JPEG 都走这里。有损模式传 --max 设定质量上限，无损模式不传质量参数，只重排压缩数据。"
 msgstr ""
 
-#: includes/class-local-crush.php:291
+#: includes/class-local-crush.php:292
 msgid "执行中"
 msgstr ""
 
@@ -997,11 +1035,11 @@ msgstr ""
 msgid "换一种更狠的无损压缩算法，通常还能再小几个百分点，但耗时明显更长；大图或帧特别多的动图容易跑到超时，所以默认关闭。"
 msgstr ""
 
-#: includes/class-processor.php:2864
+#: includes/class-processor.php:3004
 msgid "插件正在执行维护操作，请稍后重试"
 msgstr ""
 
-#: includes/class-settings.php:1434
+#: includes/class-settings.php:1444
 msgid "插件的所有压缩都靠 proc_open() 直接启动命令行工具，请联系主机商启用"
 msgstr ""
 
@@ -1013,7 +1051,7 @@ msgstr ""
 msgid "操作失败"
 msgstr ""
 
-#: includes/class-settings.php:1538
+#: includes/class-settings.php:1548
 msgid "支持"
 msgstr ""
 
@@ -1097,7 +1135,7 @@ msgstr ""
 msgid "整只动画交给 FFmpeg 的 libaom-av1，一条命令读写全部帧，不需要 ffprobe 或 avifdec，所以单独一组。-crf / -cpu-used / -pix_fmt 都是 FFmpeg 的原始参数。"
 msgstr ""
 
-#: compression/class-tool-base.php:671 includes/class-compressor.php:414 includes/class-converter.php:188 includes/class-processor.php:376 includes/class-processor.php:402
+#: compression/class-tool-base.php:671 includes/class-compressor.php:414 includes/class-converter.php:188 includes/class-processor.php:409 includes/class-processor.php:499
 msgid "文件不存在"
 msgstr ""
 
@@ -1117,7 +1155,7 @@ msgstr ""
 msgid "文字截图"
 msgstr ""
 
-#: includes/class-settings.php:1603
+#: includes/class-settings.php:1613
 msgid "无损压缩"
 msgstr ""
 
@@ -1125,19 +1163,19 @@ msgstr ""
 msgid "无损级别"
 msgstr ""
 
-#: includes/class-media-library.php:525 includes/class-media-library.php:543 includes/class-media-library.php:645 includes/class-media-library.php:676 includes/class-processor.php:497
+#: includes/class-media-library.php:543 includes/class-media-library.php:561 includes/class-media-library.php:631 includes/class-processor.php:594
 msgid "无效的图片附件"
 msgstr ""
 
-#: includes/class-task.php:340
+#: includes/class-task.php:344
 msgid "无效的操作类型"
 msgstr ""
 
-#: includes/class-media-library.php:708 includes/class-media-library.php:732
+#: includes/class-media-library.php:690 includes/class-media-library.php:714
 msgid "无效的缩略图尺寸"
 msgstr ""
 
-#: includes/class-media-library.php:573 includes/class-media-library.php:609
+#: includes/class-media-library.php:596
 msgid "无效的附件 ID"
 msgstr ""
 
@@ -1145,7 +1183,7 @@ msgstr ""
 msgid "无法为源文件分配新文件名，已保留原文件"
 msgstr ""
 
-#: includes/class-processor.php:569
+#: includes/class-processor.php:671
 msgid "无法创建原图备份，已停止压缩"
 msgstr ""
 
@@ -1157,7 +1195,7 @@ msgstr ""
 msgid "无法创建回滚副本，已跳过压缩"
 msgstr ""
 
-#: includes/class-processor.php:2868
+#: includes/class-processor.php:3008
 msgid "无法创建锁文件，请检查上传目录的写入权限"
 msgstr ""
 
@@ -1181,7 +1219,7 @@ msgstr ""
 msgid "无法清理旧的转换结果，已保留原文件"
 msgstr ""
 
-#: includes/class-media-library.php:846
+#: includes/class-media-library.php:841
 msgid "无法识别的操作"
 msgstr ""
 
@@ -1201,12 +1239,16 @@ msgstr ""
 msgid "无法读取动图信息，已停止压缩以保护内容"
 msgstr ""
 
-#: includes/class-media-library.php:548
+#: includes/class-media-library.php:566
 msgid "无法读取图片详情"
 msgstr ""
 
-#: includes/class-processor.php:344
+#: includes/class-processor.php:377
 msgid "旧兼容格式"
+msgstr ""
+
+#: includes/class-media-library.php:727
+msgid "旧格式图片已删除"
 msgstr ""
 
 #: compression/class-cjxl.php:174
@@ -1217,7 +1259,7 @@ msgstr ""
 msgid "暂无官方包，建议从 GitHub Releases 下载或自行编译"
 msgstr ""
 
-#: includes/class-settings.php:1598
+#: includes/class-settings.php:1608
 msgid "有损压缩"
 msgstr ""
 
@@ -1229,7 +1271,7 @@ msgstr ""
 msgid "有损强度"
 msgstr ""
 
-#: includes/class-settings.php:67 includes/class-settings.php:137 includes/class-settings.php:262 includes/class-settings.php:292 includes/class-settings.php:330 includes/class-settings.php:420
+#: includes/class-settings.php:137 includes/class-settings.php:262 includes/class-settings.php:292 includes/class-settings.php:330 includes/class-settings.php:420 includes/class-settings.php:67
 msgid "有损质量"
 msgstr ""
 
@@ -1253,31 +1295,31 @@ msgstr ""
 msgid "服务器缺少 DOM 扩展，无法安全处理 SVG"
 msgstr ""
 
-#: includes/class-media-library.php:779
+#: includes/class-media-library.php:774
 msgid "未勾选及已失效尺寸的缩略图已删除"
 msgstr ""
 
-#: includes/class-media-library.php:325 includes/class-processor.php:417
+#: includes/class-media-library.php:345 includes/class-processor.php:514
 msgid "未压缩"
 msgstr ""
 
-#: includes/class-settings.php:1465
+#: includes/class-settings.php:1475
 msgid "未安装"
 msgstr ""
 
-#: includes/class-processor.php:526
+#: includes/class-processor.php:628
 msgid "未找到可压缩的图片文件"
 msgstr ""
 
-#: includes/class-processor.php:468
+#: includes/class-processor.php:565
 msgid "未知"
 msgstr ""
 
-#: includes/class-processor.php:433
+#: includes/class-processor.php:530
 msgid "未缩放原图"
 msgstr ""
 
-#: includes/class-media-library.php:814
+#: includes/class-media-library.php:809
 msgid "未缩放的原始大图已删除"
 msgstr ""
 
@@ -1289,7 +1331,7 @@ msgstr ""
 msgid "本地命令执行超时"
 msgstr ""
 
-#: includes/class-media-library.php:520 includes/class-media-library.php:538 includes/class-media-library.php:566 includes/class-media-library.php:602 includes/class-media-library.php:638 includes/class-media-library.php:671 includes/class-task.php:222 includes/class-task.php:245 includes/class-task.php:264 includes/class-task.php:278 includes/class-task.php:309
+#: includes/class-media-library.php:538 includes/class-media-library.php:556 includes/class-media-library.php:589 includes/class-media-library.php:626 includes/class-task.php:226 includes/class-task.php:249 includes/class-task.php:268 includes/class-task.php:282 includes/class-task.php:313
 msgid "权限不足"
 msgstr ""
 
@@ -1302,27 +1344,31 @@ msgid "格式转换"
 msgstr ""
 
 #, php-format
-#: includes/class-local-crush.php:302
+#: includes/class-local-crush.php:303
 msgid "正在处理：%s"
+msgstr ""
+
+#: includes/class-local-crush.php:270
+msgid "此图片不再压缩"
 msgstr ""
 
 #: includes/class-local-crush.php:269
 msgid "此图片不再生成缩略图"
 msgstr ""
 
-#: includes/class-media-library.php:651 includes/class-media-library.php:742
+#: includes/class-media-library.php:724 includes/class-media-library.php:737
 msgid "没有可删除的兼容格式回退"
 msgstr ""
 
-#: includes/class-media-library.php:811
+#: includes/class-media-library.php:806
 msgid "没有可删除的未缩放原始大图"
 msgstr ""
 
-#: includes/class-media-library.php:722 includes/class-media-library.php:759
+#: includes/class-media-library.php:704 includes/class-media-library.php:754
 msgid "没有可删除的缩略图尺寸"
 msgstr ""
 
-#: includes/class-processor.php:549
+#: includes/class-processor.php:651
 msgid "没有可处理的图片文件"
 msgstr ""
 
@@ -1334,27 +1380,27 @@ msgstr ""
 msgid "没有可用的压缩工具"
 msgstr ""
 
-#: includes/class-processor.php:706
+#: includes/class-processor.php:808
 msgid "没有可用的压缩结果"
 msgstr ""
 
-#: includes/class-media-library.php:580 includes/class-media-library.php:616
+#: includes/class-media-library.php:603
 msgid "没有可用的备份"
 msgstr ""
 
-#: includes/class-task.php:284 includes/class-task.php:290
+#: includes/class-task.php:288 includes/class-task.php:294
 msgid "没有可重试的失败记录"
 msgstr ""
 
-#: includes/class-media-library.php:776
-msgid "没有需要删除的未勾选或已失效尺寸缩略图"
-msgstr ""
-
-#: includes/class-media-library.php:843
+#: includes/class-media-library.php:838
 msgid "没有缺失的尺寸需要补生成"
 msgstr ""
 
-#: includes/class-task.php:1150
+#: includes/class-media-library.php:771
+msgid "没有需要删除的未勾选或已失效尺寸缩略图"
+msgstr ""
+
+#: includes/class-task.php:1189
 msgid "没有需要处理的项目"
 msgstr ""
 
@@ -1378,7 +1424,7 @@ msgstr ""
 msgid "照片"
 msgstr ""
 
-#: includes/class-local-crush.php:259 includes/class-settings.php:1452 includes/class-settings.php:1528
+#: includes/class-local-crush.php:259 includes/class-settings.php:1462 includes/class-settings.php:1538
 msgid "状态"
 msgstr ""
 
@@ -1390,51 +1436,77 @@ msgstr ""
 msgid "目标格式"
 msgstr ""
 
-#: includes/class-local-crush.php:311
+#: includes/class-local-crush.php:312
 msgid "确定停止当前任务吗？已经处理完的部分会保留下来。"
 msgstr ""
 
-#: includes/class-local-crush.php:280
+#: includes/class-local-crush.php:281
 msgid "确定要为已勾选但缺失的尺寸补生成缩略图吗？开启了自动缩放且主图超过阈值时，还会生成或修正 -scaled 缩放图。这可能需要一些时间。"
 msgstr ""
 
-#: includes/class-local-crush.php:286
-msgid "确定要删除所有兼容格式回退吗？删除后不支持新格式的浏览器将直接加载新格式图片，此操作不可撤销。"
-msgstr ""
-
-#: includes/class-local-crush.php:284
-msgid "确定要删除所有原图备份吗？删除后将无法恢复原图。"
-msgstr ""
-
-#: includes/class-local-crush.php:287
-msgid "确定要删除所有未缩放的原始大图吗？只处理生成过 -scaled 缩放图的图片，格式转换后的那份和它的旧格式回退文件会一起删除，媒体库主图仍是 -scaled 图。此操作不涉及备份，没有备份的图片删除后无法恢复，且不可撤销。"
-msgstr ""
-
-#: includes/class-local-crush.php:285
-msgid "确定要删除此图片的兼容格式回退吗？删除后不支持新格式的浏览器将直接加载新格式图片，此操作不可撤销。"
+#: includes/class-local-crush.php:283
+msgid "确定要关闭所有图片的“此图片不再压缩”开关吗？只解除锁定，不会立刻压缩图片，之后的压缩会恢复正常。"
 msgstr ""
 
 #: includes/class-local-crush.php:282
+msgid "确定要关闭所有图片的“此图片不再生成缩略图”开关吗？只解除锁定，不会立刻生成缩略图，之后的补生成和重新生成会恢复正常。"
+msgstr ""
+
+#, php-format
+#: includes/class-local-crush.php:274
+msgid "确定要删除“%s”的旧格式图片吗？新格式文件会保留，全站指向旧格式的链接会改到新格式。此操作不可撤销。"
+msgstr ""
+
+#, php-format
+#: includes/class-local-crush.php:272
+msgid "确定要删除“%s”这个尺寸的缩略图吗？它的旧格式副本会一起删除，全站指向它们的图片链接会改到面积最接近的现有尺寸。此操作不可撤销。"
+msgstr ""
+
+#: includes/class-local-crush.php:288
+msgid "确定要删除所有兼容格式回退吗？删除后不支持新格式的浏览器将直接加载新格式图片，此操作不可撤销。"
+msgstr ""
+
+#: includes/class-local-crush.php:286
+msgid "确定要删除所有原图备份吗？删除后将无法恢复原图。"
+msgstr ""
+
+#: includes/class-local-crush.php:280
+msgid "确定要删除所有未勾选及已不再注册的缩略图吗？全站指向这些尺寸的链接会改到面积最接近的现有尺寸；关闭了自动缩放或缩放图与阈值不符时，也会删除缩放图让主图退回原图。此操作不可撤销。"
+msgstr ""
+
+#: includes/class-local-crush.php:289
+msgid "确定要删除所有未缩放的原始大图吗？只处理生成过 -scaled 缩放图的图片，格式转换后的那份和它的旧格式回退文件会一起删除，媒体库主图仍是 -scaled 图。此操作不涉及备份，没有备份的图片删除后无法恢复，且不可撤销。"
+msgstr ""
+
+#: includes/class-local-crush.php:287
+msgid "确定要删除此图片的兼容格式回退吗？删除后不支持新格式的浏览器将直接加载新格式图片，此操作不可撤销。"
+msgstr ""
+
+#: includes/class-local-crush.php:284
 msgid "确定要删除此图片的备份吗？删除后将无法恢复原图。"
 msgstr ""
 
-#: includes/class-local-crush.php:275
+#: includes/class-local-crush.php:276
 msgid "确定要删除这张图片所有未勾选及已不再注册的缩略图吗？全站指向这些尺寸的链接会改到面积最接近的现有尺寸；关闭了自动缩放或缩放图与阈值不符时，也会删除缩放图让主图退回原图。此操作不可撤销。"
 msgstr ""
 
-#: includes/class-local-crush.php:274
+#: includes/class-local-crush.php:275
 msgid "确定要删除这张图片未缩放的原始大图吗？此操作不涉及备份，没有备份的图片删除后无法恢复，且不可撤销。"
 msgstr ""
 
-#: includes/class-local-crush.php:276
-msgid "确定要删除这张图片的所有缩略图尺寸吗？会连同 -scaled 缩放图一起删除并让主图退回未缩放原图（没有未缩放原图时保留 -scaled 图），原图备份不受影响。此操作不可撤销。"
-msgstr ""
-
-#: includes/class-local-crush.php:278
-msgid "确定要恢复所有原图备份吗？此操作不可撤销。"
+#: includes/class-local-crush.php:285
+msgid "确定要删除这张图片的 -scaled 缩放图吗？主图会退回未缩放的原始大图，全站指向缩放图的链接会改到原图，此操作不可撤销。"
 msgstr ""
 
 #: includes/class-local-crush.php:277
+msgid "确定要删除这张图片的所有缩略图尺寸吗？会连同 -scaled 缩放图一起删除并让主图退回未缩放原图（没有未缩放原图时保留 -scaled 图），原图备份不受影响。此操作不可撤销。"
+msgstr ""
+
+#: includes/class-local-crush.php:279
+msgid "确定要恢复所有原图备份吗？此操作不可撤销。"
+msgstr ""
+
+#: includes/class-local-crush.php:278
 msgid "确定要批量压缩媒体库中所有未压缩的图片吗？任务在后台执行，可能需要一些时间。"
 msgstr ""
 
@@ -1446,7 +1518,7 @@ msgstr ""
 msgid "类别"
 msgstr ""
 
-#: includes/class-settings.php:1415
+#: includes/class-settings.php:1425
 msgid "系统状态"
 msgstr ""
 
@@ -1454,11 +1526,11 @@ msgstr ""
 msgid "绘图 / 线稿"
 msgstr ""
 
-#: includes/class-media-library.php:398
+#: includes/class-media-library.php:429
 msgid "继续压缩"
 msgstr ""
 
-#: includes/class-settings.php:1372
+#: includes/class-settings.php:1382
 msgid "继续执行"
 msgstr ""
 
@@ -1471,12 +1543,12 @@ msgid "编码速度"
 msgstr ""
 
 #, php-format
-#: includes/class-processor.php:445
+#: includes/class-processor.php:542
 msgid "缩略图 %1$s（%2$d × %3$d）"
 msgstr ""
 
 #, php-format
-#: includes/class-processor.php:454
+#: includes/class-processor.php:551
 msgid "缩略图 %s"
 msgstr ""
 
@@ -1484,12 +1556,12 @@ msgstr ""
 msgid "缩略图尺寸"
 msgstr ""
 
-#: includes/class-media-library.php:725
+#: includes/class-media-library.php:707
 msgid "缩略图已删除"
 msgstr ""
 
 #, php-format
-#: includes/class-settings.php:1542
+#: includes/class-settings.php:1552
 msgid "缺少：%s"
 msgstr ""
 
@@ -1526,11 +1598,11 @@ msgid "节省大小"
 msgstr ""
 
 #, php-format
-#: includes/class-settings.php:1627
+#: includes/class-settings.php:1637
 msgid "范围 %1$d-%2$d，默认 %3$d。"
 msgstr ""
 
-#: includes/class-media-library.php:820
+#: includes/class-media-library.php:815
 msgid "补生成失败"
 msgstr ""
 
@@ -1542,19 +1614,35 @@ msgstr ""
 msgid "裁剪"
 msgstr ""
 
-#: includes/class-local-crush.php:339
+#: includes/class-settings.php:1327
+msgid "解除所有不再压缩锁定"
+msgstr ""
+
+#: includes/class-settings.php:1337
+msgid "解除所有不再生成缩略图锁定"
+msgstr ""
+
+#: includes/class-task.php:136
+msgid "解除所有图片的“不再压缩”锁定"
+msgstr ""
+
+#: includes/class-task.php:132
+msgid "解除所有图片的“不再生成缩略图”锁定"
+msgstr ""
+
+#: includes/class-local-crush.php:340
 msgid "设置"
 msgstr ""
 
-#: includes/class-media-library.php:688
+#: includes/class-media-library.php:643 includes/class-media-library.php:670
 msgid "设置保存失败，请重试"
 msgstr ""
 
-#: includes/class-processor.php:2865
+#: includes/class-processor.php:3005
 msgid "该图片正在处理中，请稍后重试"
 msgstr ""
 
-#: includes/class-processor.php:816
+#: includes/class-processor.php:918
 msgid "该尺寸与另一尺寸共用同一份压缩结果，未重复处理"
 msgstr ""
 
@@ -1566,7 +1654,7 @@ msgstr ""
 msgid "该格式未配置格式转换"
 msgstr ""
 
-#: includes/class-media-library.php:507
+#: includes/class-media-library.php:525
 msgid "详情"
 msgstr ""
 
@@ -1574,15 +1662,15 @@ msgstr ""
 msgid "调色板颜色数"
 msgstr ""
 
-#: includes/class-settings.php:1526
+#: includes/class-settings.php:1536
 msgid "路径"
 msgstr ""
 
-#: includes/class-settings.php:1522
+#: includes/class-settings.php:1532
 msgid "路径支持状态"
 msgstr ""
 
-#: includes/class-settings.php:1477
+#: includes/class-settings.php:1487
 msgid "跳转"
 msgstr ""
 
@@ -1595,15 +1683,31 @@ msgid "这一节是 pngquant 的全部参数。本节最上面的“PNG 走哪�
 msgstr ""
 
 #, php-format
-#: includes/class-settings.php:1514
+#: includes/class-settings.php:1524
 msgid "这些目录不存在，暂时不会参与查找：%s"
 msgstr ""
 
-#: includes/class-media-library.php:824
+#: includes/class-media-library.php:677
+msgid "这张图片已恢复为可压缩"
+msgstr ""
+
+#: includes/class-media-library.php:665
+msgid "这张图片已经压缩，不能再设为不再压缩"
+msgstr ""
+
+#: includes/class-media-library.php:676 includes/class-processor.php:599
+msgid "这张图片已设为不再压缩"
+msgstr ""
+
+#: includes/class-media-library.php:819
 msgid "这张图片已设为不再生成缩略图，先关掉开关再补生成"
 msgstr ""
 
-#: includes/class-media-library.php:762
+#: includes/class-media-library.php:793
+msgid "这张图片的主图不是 -scaled 缩放图，或未缩放原图已不存在"
+msgstr ""
+
+#: includes/class-media-library.php:757
 msgid "这张图片的缩略图已全部删除"
 msgstr ""
 
@@ -1615,37 +1719,37 @@ msgstr ""
 msgid "选择目标格式：AVIF 压缩率更高但压缩更慢，WebP 兼容性最好，JPEG XL 同画质体积最小但浏览器支持仍不完整（动画 JXL 更是只有少数浏览器能播），选 JPEG XL 时建议同时开启上面的“兼容格式回退”。"
 msgstr ""
 
-#: includes/class-settings.php:94 includes/class-settings.php:146
+#: includes/class-settings.php:146 includes/class-settings.php:94
 msgid "透明通道质量"
 msgstr ""
 
-#: includes/class-media-library.php:655
+#: includes/class-media-library.php:733
 msgid "部分兼容格式回退删除失败，请重试"
 msgstr ""
 
 #, php-format
-#: includes/class-media-library.php:390
+#: includes/class-media-library.php:419
 msgid "部分已压缩 %1$d/%2$d"
 msgstr ""
 
-#: includes/class-task.php:1199 includes/class-task.php:1213
+#: includes/class-task.php:1238 includes/class-task.php:1252
 msgid "部分正文链接未更新成功，可再次执行本操作继续处理。"
 msgstr ""
 
-#: includes/class-media-library.php:348 includes/class-media-library.php:368
+#: includes/class-media-library.php:373 includes/class-media-library.php:396
 msgid "重试"
 msgstr ""
 
 #, php-format
-#: includes/class-local-crush.php:310
+#: includes/class-local-crush.php:311
 msgid "重试失败的 %d 个项目"
 msgstr ""
 
-#: includes/class-settings.php:1373
+#: includes/class-settings.php:1383
 msgid "重试失败的项目"
 msgstr ""
 
-#: includes/class-settings.php:1454
+#: includes/class-settings.php:1464
 msgid "链接"
 msgstr ""
 
@@ -1653,7 +1757,7 @@ msgstr ""
 msgid "附件 MIME 类型同步失败，已保留原文件"
 msgstr ""
 
-#: includes/class-processor.php:673
+#: includes/class-processor.php:775
 msgid "附件引用更新失败，已退回原文件"
 msgstr ""
 
@@ -1661,7 +1765,7 @@ msgstr ""
 msgid "附件路径同步失败，已保留原文件"
 msgstr ""
 
-#: includes/class-settings.php:1714
+#: includes/class-settings.php:1724
 msgid "静态 GIF 转 AVIF"
 msgstr ""
 
@@ -1669,7 +1773,7 @@ msgstr ""
 msgid "静态 GIF 转 AVIF（GD + avifenc）"
 msgstr ""
 
-#: includes/class-settings.php:1711
+#: includes/class-settings.php:1721
 msgid "静态 GIF 转 WebP"
 msgstr ""
 
@@ -1694,78 +1798,11 @@ msgid "默认会把全透明像素的底色抹掉，文件更小；勾选后原�
 msgstr ""
 
 #, php-format
-#: includes/class-settings.php:1636
+#: includes/class-settings.php:1646
 msgid "默认：%s。"
 msgstr ""
 
 #, php-format
-#: includes/class-task.php:1264
+#: includes/class-task.php:1312
 msgid "（共 %d 个，仅显示前 10 个）"
-msgstr ""
-
-#: includes/class-converter.php:734
-msgid "图片链接替换失败，已保留原文件"
-msgstr ""
-
-#: includes/class-local-crush.php:279
-msgid "确定要删除所有未勾选及已不再注册的缩略图吗？全站指向这些尺寸的链接会改到面积最接近的现有尺寸；关闭了自动缩放或缩放图与阈值不符时，也会删除缩放图让主图退回原图。此操作不可撤销。"
-msgstr ""
-
-#: includes/class-settings.php:1291
-msgid "删除媒体库中转换后保留的旧格式回退文件，并把全站指向它们的图片链接改到新格式；删除后不支持新格式的浏览器将直接加载新格式图片"
-msgstr ""
-
-#: includes/class-settings.php:1311
-msgid "只保留当前已勾选的尺寸：未勾选的、已不再注册的以及其他多余尺寸全部删除，全站指向它们的图片链接会改到面积最接近的现有尺寸；若关闭了自动缩放，或现有 -scaled 缩放图与阈值不符，也会删除缩放图让主图退回原图"
-msgstr ""
-
-#: includes/class-settings.php:1321
-msgid "为已勾选但缺失的尺寸补生成缩略图；若开启了自动缩放且主图超过阈值，还会生成或修正 -scaled 缩放图。不会重建已存在的缩略图，纯缩略图缺失也不改动图片链接"
-msgstr ""
-
-#, php-format
-#: includes/class-local-crush.php:271
-msgid "确定要删除“%s”这个尺寸的缩略图吗？它的旧格式副本会一起删除，全站指向它们的图片链接会改到面积最接近的现有尺寸。此操作不可撤销。"
-msgstr ""
-
-#, php-format
-#: includes/class-local-crush.php:273
-msgid "确定要删除“%s”的旧格式图片吗？新格式文件会保留，全站指向旧格式的链接会改到新格式。此操作不可撤销。"
-msgstr ""
-
-#: includes/class-media-library.php:745
-msgid "旧格式图片已删除"
-msgstr ""
-
-#: includes/class-local-crush.php:281
-msgid "确定要关闭所有图片的“此图片不再生成缩略图”开关吗？只解除锁定，不会立刻生成缩略图，之后的补生成和重新生成会恢复正常。"
-msgstr ""
-
-#: includes/class-task.php:132
-msgid "解除所有图片的“不再生成缩略图”锁定"
-msgstr ""
-
-#: includes/class-settings.php:1331
-msgid "关闭所有图片详情里的“此图片不再生成缩略图”开关；只解除锁定，不会立刻生成缩略图，之后的补生成和重新生成会恢复正常"
-msgstr ""
-
-#, php-format
-#: includes/class-task.php:1241
-msgid "已解除 %1$d 个附件的“不再生成缩略图”锁定，失败 %2$d 个"
-msgstr ""
-
-#: includes/class-settings.php:1327
-msgid "解除所有不再生成缩略图锁定"
-msgstr ""
-
-#: includes/class-local-crush.php:283
-msgid "确定要删除这张图片的 -scaled 缩放图吗？主图会退回未缩放的原始大图，全站指向缩放图的链接会改到原图，此操作不可撤销。"
-msgstr ""
-
-#: includes/class-media-library.php:798
-msgid "这张图片的主图不是 -scaled 缩放图，或未缩放原图已不存在"
-msgstr ""
-
-#: includes/class-media-library.php:801
-msgid "-scaled 缩放图已删除，主图已退回未缩放原图"
 msgstr ""

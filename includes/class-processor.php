@@ -28,6 +28,11 @@ class Local_Crush_Processor {
     const PENDING_META_KEY = '_local_crush_pending';
 
     /**
+     * 单张图片“不再压缩”标记的 meta 键
+     */
+    const SKIP_COMPRESS_META_KEY = '_local_crush_no_compress';
+
+    /**
      * 单个请求在结束前最多处理的上传待办数量
      */
     const UPLOAD_QUEUE_LIMIT = 3;
@@ -149,6 +154,34 @@ class Local_Crush_Processor {
         }
 
         return in_array( get_post_mime_type( $attachment_id ), $this->get_supported_mimes(), true );
+    }
+
+    /**
+     * 这张图片是否被单独设为不再压缩
+     *
+     * @param int $attachment_id 附件 ID
+     * @return bool
+     */
+    public static function compression_disabled_for_attachment( int $attachment_id ): bool {
+        return '1' === (string) get_post_meta( $attachment_id, self::SKIP_COMPRESS_META_KEY, true );
+    }
+
+    /**
+     * 设置这张图片是否不再压缩
+     *
+     * @param int  $attachment_id 附件 ID
+     * @param bool $disabled      是否不再压缩
+     * @return bool 是否写入成功
+     */
+    public function set_compression_disabled( int $attachment_id, bool $disabled ): bool {
+        if ( $disabled ) {
+            update_post_meta( $attachment_id, self::SKIP_COMPRESS_META_KEY, '1' );
+        } else {
+            delete_post_meta( $attachment_id, self::SKIP_COMPRESS_META_KEY );
+        }
+
+        // update_post_meta 在值未变化时同样返回 false，一律以读回结果为准。
+        return self::compression_disabled_for_attachment( $attachment_id ) === $disabled;
     }
 
     /**
@@ -559,6 +592,11 @@ class Local_Crush_Processor {
     public function compress_attachment( int $attachment_id ): array {
         if ( ! $this->is_valid_attachment( $attachment_id ) ) {
             return $this->empty_result( __( '无效的图片附件', 'local-crush' ), 'failed' );
+        }
+
+        // 单图开关对所有入口生效：媒体库按钮、批量任务、上传自动压缩都从这里过。
+        if ( self::compression_disabled_for_attachment( $attachment_id ) ) {
+            return $this->empty_result( __( '这张图片已设为不再压缩', 'local-crush' ), 'skipped' );
         }
 
         $lock = $this->acquire_attachment_lock( $attachment_id );

@@ -1322,6 +1322,16 @@ class Local_Crush_Settings {
                 </td>
             </tr>
             <tr>
+                <td style="padding: 10px 0;">
+                    <button type="button" class="button" id="local-crush-unlock-compress">
+                        <?php esc_html_e( '解除所有不再压缩锁定', 'local-crush' ); ?>
+                    </button>
+                </td>
+                <td style="padding: 10px 0;">
+                    <span class="description"><?php esc_html_e( '关闭所有图片详情里的“此图片不再压缩”开关；只解除锁定，不会立刻压缩图片，之后的压缩会恢复正常', 'local-crush' ); ?></span>
+                </td>
+            </tr>
+            <tr>
                 <td style="padding: 10px 24px 10px 0;">
                     <button type="button" class="button" id="local-crush-unlock-thumbnails" style="white-space: nowrap;">
                         <?php esc_html_e( '解除所有不再生成缩略图锁定', 'local-crush' ); ?>

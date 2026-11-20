@@ -151,15 +151,36 @@ class Local_Crush_Media_Library {
                 margin: 0;
             }
 
-            /* 闹钟式开关：轨道 + 滑块，整块可点，单独靠右 */
+            /* 详情页的开关放在同一组里，整组靠右，组内两个开关并排 */
+            .local-crush-details-switches {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 8px 20px;
+                margin-left: auto;
+            }
+
+            /* 闹钟式开关：轨道 + 滑块，整块可点 */
             .local-crush-switch {
                 position: relative;
                 display: inline-flex;
                 align-items: center;
                 gap: 8px;
-                margin-left: auto;
                 cursor: pointer;
                 user-select: none;
+            }
+
+            /* 灰色不可用的开关：已压缩的图片不能再设为不再压缩 */
+            .local-crush-switch.is-disabled {
+                cursor: default;
+            }
+
+            .local-crush-switch.is-disabled .local-crush-switch-track {
+                opacity: .45;
+            }
+
+            .local-crush-switch.is-disabled .local-crush-switch-text {
+                color: #a7aaad;
             }
 
             /* 藏掉原生复选框；WordPress 会给禁用的复选框加 0.7 不透明度，
@@ -295,32 +316,40 @@ class Local_Crush_Media_Library {
         // 引用已还原但残留尚未清理时，恢复按钮仍要可用，否则用户无法重试收尾。
         $can_restore = $has_backup || $processor->has_pending_restore( $attachment_id );
 
+        // 设为不再压缩后，这一行的单图操作按钮全部收起来，只留状态和详情入口。
+        $compression_disabled = Local_Crush_Processor::compression_disabled_for_attachment( $attachment_id );
+
         if ( 'complete' === $state['status'] ) {
-            $this->render_compressed_status( $attachment_id, $state, $can_restore );
+            $this->render_compressed_status( $attachment_id, $state, $can_restore, $compression_disabled );
         } elseif ( 'partial' === $state['status'] ) {
-            $this->render_partial_status( $attachment_id, $state, $can_restore );
+            $this->render_partial_status( $attachment_id, $state, $can_restore, $compression_disabled );
         } elseif ( 'failed' === $state['status'] ) {
-            $this->render_failed_status( $attachment_id, $can_restore );
+            $this->render_failed_status( $attachment_id, $can_restore, $compression_disabled );
         } elseif ( 'skipped' === $state['status'] ) {
-            $this->render_skipped_status( $attachment_id, $can_restore );
+            $this->render_skipped_status( $attachment_id, $can_restore, $compression_disabled );
         } else {
-            $this->render_uncompressed_status( $attachment_id );
+            $this->render_uncompressed_status( $attachment_id, $compression_disabled );
         }
     }
 
     /**
      * 渲染未压缩状态
      *
-     * @param int $attachment_id 附件 ID
+     * @param int  $attachment_id       附件 ID
+     * @param bool $compression_disabled 是否已设为不再压缩
      */
-    private function render_uncompressed_status( int $attachment_id ) {
+    private function render_uncompressed_status( int $attachment_id, bool $compression_disabled ) {
         ?>
         <div class="local-crush-status" data-attachment-id="<?php echo esc_attr( $attachment_id ); ?>">
             <div class="local-crush-info">
                 <span class="status-text"><?php esc_html_e( '未压缩', 'local-crush' ); ?></span>
                 <?php $this->render_storage_summary( $attachment_id ); ?>
             </div>
-            <?php $this->render_action_buttons( $attachment_id, 'compress', __( '压缩', 'local-crush' ), false ); ?>
+            <?php
+            if ( ! $compression_disabled ) {
+                $this->render_action_buttons( $attachment_id, 'compress', __( '压缩', 'local-crush' ), false );
+            }
+            ?>
         </div>
         <?php
     }
@@ -328,17 +357,22 @@ class Local_Crush_Media_Library {
     /**
      * 渲染压缩失败状态
      *
-     * @param int  $attachment_id 附件 ID
-     * @param bool $can_restore   是否可恢复
+     * @param int  $attachment_id        附件 ID
+     * @param bool $can_restore          是否可恢复
+     * @param bool $compression_disabled 是否已设为不再压缩
      */
-    private function render_failed_status( int $attachment_id, bool $can_restore ) {
+    private function render_failed_status( int $attachment_id, bool $can_restore, bool $compression_disabled ) {
         ?>
         <div class="local-crush-status" data-attachment-id="<?php echo esc_attr( $attachment_id ); ?>">
             <div class="local-crush-info">
                 <span class="status-text" style="color: #d63638;"><?php esc_html_e( '压缩失败', 'local-crush' ); ?></span>
                 <?php $this->render_storage_summary( $attachment_id ); ?>
             </div>
-            <?php $this->render_action_buttons( $attachment_id, 'compress', __( '重试', 'local-crush' ), $can_restore ); ?>
+            <?php
+            if ( ! $compression_disabled ) {
+                $this->render_action_buttons( $attachment_id, 'compress', __( '重试', 'local-crush' ), $can_restore );
+            }
+            ?>
         </div>
         <?php
     }
@@ -346,17 +380,22 @@ class Local_Crush_Media_Library {
     /**
      * 渲染主动跳过状态
      *
-     * @param int  $attachment_id 附件 ID
-     * @param bool $can_restore   是否可恢复
+     * @param int  $attachment_id        附件 ID
+     * @param bool $can_restore          是否可恢复
+     * @param bool $compression_disabled 是否已设为不再压缩
      */
-    private function render_skipped_status( int $attachment_id, bool $can_restore ) {
+    private function render_skipped_status( int $attachment_id, bool $can_restore, bool $compression_disabled ) {
         ?>
         <div class="local-crush-status" data-attachment-id="<?php echo esc_attr( $attachment_id ); ?>">
             <div class="local-crush-info">
                 <span class="status-text" style="color: #dba617;"><?php esc_html_e( '已跳过', 'local-crush' ); ?></span>
                 <?php $this->render_storage_summary( $attachment_id ); ?>
             </div>
-            <?php $this->render_action_buttons( $attachment_id, 'compress', __( '重试', 'local-crush' ), $can_restore ); ?>
+            <?php
+            if ( ! $compression_disabled ) {
+                $this->render_action_buttons( $attachment_id, 'compress', __( '重试', 'local-crush' ), $can_restore );
+            }
+            ?>
         </div>
         <?php
     }
@@ -364,11 +403,12 @@ class Local_Crush_Media_Library {
     /**
      * 渲染部分压缩状态
      *
-     * @param int   $attachment_id 附件 ID
-     * @param array $state         统一状态
-     * @param bool  $can_restore   是否可恢复
+     * @param int   $attachment_id        附件 ID
+     * @param array $state                统一状态
+     * @param bool  $can_restore          是否可恢复
+     * @param bool  $compression_disabled 是否已设为不再压缩
      */
-    private function render_partial_status( int $attachment_id, array $state, bool $can_restore ) {
+    private function render_partial_status( int $attachment_id, array $state, bool $can_restore, bool $compression_disabled ) {
         ?>
         <div class="local-crush-status" data-attachment-id="<?php echo esc_attr( $attachment_id ); ?>">
             <div class="local-crush-info">
@@ -384,7 +424,11 @@ class Local_Crush_Media_Library {
                 </span>
                 <?php $this->render_storage_summary( $attachment_id ); ?>
             </div>
-            <?php $this->render_action_buttons( $attachment_id, 'compress', __( '继续压缩', 'local-crush' ), $can_restore ); ?>
+            <?php
+            if ( ! $compression_disabled ) {
+                $this->render_action_buttons( $attachment_id, 'compress', __( '继续压缩', 'local-crush' ), $can_restore );
+            }
+            ?>
         </div>
         <?php
     }
@@ -392,11 +436,12 @@ class Local_Crush_Media_Library {
     /**
      * 渲染已压缩状态
      *
-     * @param int   $attachment_id 附件 ID
-     * @param array $stats         压缩统计
-     * @param bool  $can_restore   是否可恢复
+     * @param int   $attachment_id        附件 ID
+     * @param array $stats                压缩统计
+     * @param bool  $can_restore          是否可恢复
+     * @param bool  $compression_disabled 是否已设为不再压缩
      */
-    private function render_compressed_status( int $attachment_id, array $stats, bool $can_restore ) {
+    private function render_compressed_status( int $attachment_id, array $stats, bool $can_restore, bool $compression_disabled ) {
         ?>
         <div class="local-crush-status" data-attachment-id="<?php echo esc_attr( $attachment_id ); ?>">
             <div class="local-crush-info">
@@ -411,7 +456,11 @@ class Local_Crush_Media_Library {
                 </span>
                 <?php $this->render_storage_summary( $attachment_id ); ?>
             </div>
-            <?php $this->render_action_buttons( $attachment_id, '', '', $can_restore ); ?>
+            <?php
+            if ( ! $compression_disabled ) {
+                $this->render_action_buttons( $attachment_id, '', '', $can_restore );
+            }
+            ?>
         </div>
         <?php
     }
@@ -517,8 +566,13 @@ class Local_Crush_Media_Library {
             wp_send_json_error( array( 'message' => __( '无法读取图片详情', 'local-crush' ) ) );
         }
 
-        // 详情页的开关状态：这张图片是否已设为不再生成缩略图
-        $details['thumbnails_disabled'] = Local_Crush_Thumbnail_Manager::thumbnails_disabled_for_attachment( $attachment_id );
+        // 详情页的开关状态：是否已设为不再生成缩略图、是否已设为不再压缩
+        $details['thumbnails_disabled']    = Local_Crush_Thumbnail_Manager::thumbnails_disabled_for_attachment( $attachment_id );
+        $details['compression_disabled']   = Local_Crush_Processor::compression_disabled_for_attachment( $attachment_id );
+
+        // 已经全部压好的图片不能再设“不再压缩”，详情页把这个开关画成灰色
+        $state                             = local_crush()->processor->get_attachment_state( $attachment_id );
+        $details['compress_toggle_locked'] = 'complete' === $state['status'];
 
         wp_send_json_success( $details );
     }
@@ -594,6 +648,33 @@ class Local_Crush_Media_Library {
                     'message'  => $disabled
                         ? __( '已停止为这张图片生成缩略图', 'local-crush' )
                         : __( '已恢复为这张图片生成缩略图', 'local-crush' ),
+                    'disabled' => $disabled,
+                )
+            );
+        }
+
+        if ( 'set-no-compress' === $operation ) {
+            // phpcs:ignore WordPress.Security.NonceVerification.Missing -- 同上。
+            $disabled = isset( $_POST['disabled'] ) && '1' === (string) absint( $_POST['disabled'] );
+
+            // 只允许在未压缩时打开；已经压好的图片服务端也要挡住，不能只靠界面变灰。
+            if ( $disabled ) {
+                $state = local_crush()->processor->get_attachment_state( $attachment_id );
+
+                if ( 'complete' === $state['status'] ) {
+                    wp_send_json_error( array( 'message' => __( '这张图片已经压缩，不能再设为不再压缩', 'local-crush' ) ) );
+                }
+            }
+
+            if ( ! local_crush()->processor->set_compression_disabled( $attachment_id, $disabled ) ) {
+                wp_send_json_error( array( 'message' => __( '设置保存失败，请重试', 'local-crush' ) ) );
+            }
+
+            wp_send_json_success(
+                array(
+                    'message'  => $disabled
+                        ? __( '这张图片已设为不再压缩', 'local-crush' )
+                        : __( '这张图片已恢复为可压缩', 'local-crush' ),
                     'disabled' => $disabled,
                 )
             );

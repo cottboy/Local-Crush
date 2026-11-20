@@ -132,6 +132,10 @@ class Local_Crush_Task {
                 'label'  => __( '解除所有图片的“不再生成缩略图”锁定', 'local-crush' ),
                 'source' => 'no_thumbnails',
             ),
+            'unlock_compress'     => array(
+                'label'  => __( '解除所有图片的“不再压缩”锁定', 'local-crush' ),
+                'source' => 'no_compress',
+            ),
         );
 
         // 后台接力：不带登录信息，靠任务令牌校验，只认正在执行的那个任务
@@ -650,6 +654,9 @@ class Local_Crush_Task {
 
             case 'unlock_thumbnails':
                 return $this->process_unlock_thumbnails( $attachment_id, $outcome );
+
+            case 'unlock_compress':
+                return $this->process_unlock_compress( $attachment_id, $outcome );
         }
 
         $outcome['failed'] = 1;
@@ -666,6 +673,13 @@ class Local_Crush_Task {
      */
     private function process_compress( int $attachment_id, array $outcome ): array {
         $processor = local_crush()->processor;
+
+        // 设为不再压缩的图片直接跳过，连待压缩检查都不做
+        if ( Local_Crush_Processor::compression_disabled_for_attachment( $attachment_id ) ) {
+            $outcome['attempted'] = false;
+
+            return $outcome;
+        }
 
         // 已经压过的图不算“处理过”，只是顺路看一眼，否则进度条会虚高
         if ( ! $processor->has_pending_files( $attachment_id ) ) {
@@ -848,6 +862,25 @@ class Local_Crush_Task {
      */
     private function process_unlock_thumbnails( int $attachment_id, array $outcome ): array {
         if ( local_crush()->thumbnail_manager->set_thumbnails_disabled( $attachment_id, false ) ) {
+            $outcome['success'] = 1;
+        } else {
+            $outcome['failed'] = 1;
+        }
+
+        return $outcome;
+    }
+
+    /**
+     * 解除一个附件的“不再压缩”锁定
+     *
+     * 只关掉开关，不会立刻压缩图片；之后的单图压缩和批量压缩会恢复正常。
+     *
+     * @param int   $attachment_id 附件 ID
+     * @param array $outcome       结果骨架
+     * @return array
+     */
+    private function process_unlock_compress( int $attachment_id, array $outcome ): array {
+        if ( local_crush()->processor->set_compression_disabled( $attachment_id, false ) ) {
             $outcome['success'] = 1;
         } else {
             $outcome['failed'] = 1;
@@ -1084,6 +1117,9 @@ class Local_Crush_Task {
             case 'no_thumbnails':
                 return $database->get_no_thumbnails_attachment_ids_after( $after_id, $limit );
 
+            case 'no_compress':
+                return $database->get_no_compress_attachment_ids_after( $after_id, $limit );
+
             case 'images':
                 return $database->get_image_attachment_ids_after( $after_id, $limit );
         }
@@ -1115,6 +1151,9 @@ class Local_Crush_Task {
 
             case 'no_thumbnails':
                 return $database->count_no_thumbnails_attachments();
+
+            case 'no_compress':
+                return $database->count_no_compress_attachments();
 
             case 'images':
                 return $database->count_image_attachments();
@@ -1239,6 +1278,15 @@ class Local_Crush_Task {
                 $summary = sprintf(
                     /* translators: 1: 解除锁定的附件数, 2: 失败的附件数 */
                     __( '已解除 %1$d 个附件的“不再生成缩略图”锁定，失败 %2$d 个', 'local-crush' ),
+                    (int) $task['success'],
+                    (int) $task['failed']
+                );
+                break;
+
+            case 'unlock_compress':
+                $summary = sprintf(
+                    /* translators: 1: 解除锁定的附件数, 2: 失败的附件数 */
+                    __( '已解除 %1$d 个附件的“不再压缩”锁定，失败 %2$d 个', 'local-crush' ),
                     (int) $task['success'],
                     (int) $task['failed']
                 );

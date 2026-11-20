@@ -525,6 +525,63 @@ class Local_Crush_Database {
     }
 
     /**
+     * 按附件 ID 游标获取被单独设为“不再压缩”的图片附件
+     *
+     * 只扫带这个标记的图片：没锁定的图片不需要解除，
+     * 进度条的分母也就是真正要处理的数量。
+     *
+     * @param int $after_id 上一批最后处理的附件 ID
+     * @param int $limit    本批数量
+     * @return int[]
+     */
+    public function get_no_compress_attachment_ids_after( $after_id = 0, $limit = 20 ): array {
+        global $wpdb;
+
+        $after_id = absint( $after_id );
+        $limit    = max( 1, min( 100, absint( $limit ) ) );
+
+        $ids = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT m.post_id FROM {$wpdb->postmeta} m
+                INNER JOIN {$wpdb->posts} p ON p.ID = m.post_id
+                WHERE m.meta_key = %s
+                  AND m.meta_value = '1'
+                  AND m.post_id > %d
+                  AND p.post_type = 'attachment'
+                  AND p.post_status <> 'trash'
+                ORDER BY m.post_id ASC
+                LIMIT %d",
+                Local_Crush_Processor::SKIP_COMPRESS_META_KEY,
+                $after_id,
+                $limit
+            )
+        );
+
+        return array_map( 'absint', $ids );
+    }
+
+    /**
+     * 统计被单独设为“不再压缩”的图片附件数
+     *
+     * @return int
+     */
+    public function count_no_compress_attachments(): int {
+        global $wpdb;
+
+        return (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->postmeta} m
+                INNER JOIN {$wpdb->posts} p ON p.ID = m.post_id
+                WHERE m.meta_key = %s
+                  AND m.meta_value = '1'
+                  AND p.post_type = 'attachment'
+                  AND p.post_status <> 'trash'",
+                Local_Crush_Processor::SKIP_COMPRESS_META_KEY
+            )
+        );
+    }
+
+    /**
      * 统计图片附件总数
      *
      * 批量压缩与缩略图任务按“看过多少张图”推进进度，分母就是它。

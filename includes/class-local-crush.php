@@ -267,6 +267,7 @@ class Local_Crush {
                     'btnGenerateMissing'      => __( '补生成缺失的缩略图尺寸', 'local-crush' ),
                     'btnDeleteAllSizes'       => __( '删除所有缩略图尺寸', 'local-crush' ),
                     'toggleNoThumbnails'      => __( '此图片不再生成缩略图', 'local-crush' ),
+                    'toggleNoCompress'        => __( '此图片不再压缩', 'local-crush' ),
                     /* translators: %s: 缩略图尺寸名称 */
                     'confirmDeleteSize'       => __( '确定要删除“%s”这个尺寸的缩略图吗？它的旧格式副本会一起删除，全站指向它们的图片链接会改到面积最接近的现有尺寸。此操作不可撤销。', 'local-crush' ),
                     /* translators: %s: 缩略图尺寸名称 */
@@ -279,6 +280,7 @@ class Local_Crush {
                     'confirmDeleteThumbnails'   => __( '确定要删除所有未勾选及已不再注册的缩略图吗？全站指向这些尺寸的链接会改到面积最接近的现有尺寸；关闭了自动缩放或缩放图与阈值不符时，也会删除缩放图让主图退回原图。此操作不可撤销。', 'local-crush' ),
                     'confirmGenerateThumbnails' => __( '确定要为已勾选但缺失的尺寸补生成缩略图吗？开启了自动缩放且主图超过阈值时，还会生成或修正 -scaled 缩放图。这可能需要一些时间。', 'local-crush' ),
                     'confirmUnlockThumbnails' => __( '确定要关闭所有图片的“此图片不再生成缩略图”开关吗？只解除锁定，不会立刻生成缩略图，之后的补生成和重新生成会恢复正常。', 'local-crush' ),
+                    'confirmUnlockCompress'   => __( '确定要关闭所有图片的“此图片不再压缩”开关吗？只解除锁定，不会立刻压缩图片，之后的压缩会恢复正常。', 'local-crush' ),
                     'confirmDeleteBackup'     => __( '确定要删除此图片的备份吗？删除后将无法恢复原图。', 'local-crush' ),
                     'confirmDeleteScaledMain' => __( '确定要删除这张图片的 -scaled 缩放图吗？主图会退回未缩放的原始大图，全站指向缩放图的链接会改到原图，此操作不可撤销。', 'local-crush' ),
                     'confirmDeleteAllBackups' => __( '确定要删除所有原图备份吗？删除后将无法恢复原图。', 'local-crush' ),

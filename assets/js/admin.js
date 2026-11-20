@@ -37,6 +37,7 @@
             '#local-crush-delete-all-originals': { type: 'delete_originals', confirm: 'confirmDeleteAllOriginals' },
             '#local-crush-delete-thumbnails': { type: 'delete_thumbnails', confirm: 'confirmDeleteThumbnails' },
             '#local-crush-generate-thumbnails': { type: 'generate_thumbnails', confirm: 'confirmGenerateThumbnails' },
+            '#local-crush-unlock-compress': { type: 'unlock_compress', confirm: 'confirmUnlockCompress' },
             '#local-crush-unlock-thumbnails': { type: 'unlock_thumbnails', confirm: 'confirmUnlockThumbnails' }
         },
 
@@ -60,7 +61,7 @@
             // 详情弹窗：尺寸右侧的删除按钮、标题下的操作按钮、单图开关
             $(document).on('click', '.local-crush-size-delete', this.handleSizeDelete.bind(this));
             $(document).on('click', '.local-crush-details-op', this.handleDetailsOperation.bind(this));
-            $(document).on('change', '.local-crush-switch input', this.handleNoThumbnailsSwitch.bind(this));
+            $(document).on('change', '.local-crush-switch input', this.handleAttachmentSwitch.bind(this));
 
             // 批量按钮：只是把任务交给服务器，之后由面板显示进度
             $.each(this.batchButtons, function(selector, config) {
@@ -230,6 +231,7 @@
             var i18n = this.i18n;
             var rows = details.items || [];
             var attachmentId = parseInt(details.attachment_id, 10) || 0;
+            var compressLocked = !!details.compress_toggle_locked;
             var html = '';
 
             html += '<div class="local-crush-details-modal" role="dialog" aria-modal="true">';
@@ -245,11 +247,19 @@
             html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-disabled" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnDeleteDisabled) + '</button>';
             html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-fallback" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.deleteFallback) + '</button>';
             html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-all" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnDeleteAllSizes) + '</button>';
+            html += '<span class="local-crush-details-switches">';
             html += '<label class="local-crush-switch">';
-            html += '<input type="checkbox" data-attachment-id="' + attachmentId + '"' + (details.thumbnails_disabled ? ' checked' : '') + '>';
+            html += '<input type="checkbox" data-operation="set-no-thumbnails" data-attachment-id="' + attachmentId + '"' + (details.thumbnails_disabled ? ' checked' : '') + '>';
             html += '<span class="local-crush-switch-track"><span class="local-crush-switch-thumb"></span></span>';
             html += '<span class="local-crush-switch-text">' + this.escapeHtml(i18n.toggleNoThumbnails) + '</span>';
             html += '</label>';
+            // 已全部压缩的图片不能再设“不再压缩”，开关画成灰色且不可点
+            html += '<label class="local-crush-switch' + (compressLocked ? ' is-disabled' : '') + '">';
+            html += '<input type="checkbox" data-operation="set-no-compress" data-attachment-id="' + attachmentId + '"' + (details.compression_disabled ? ' checked' : '') + (compressLocked ? ' disabled' : '') + '>';
+            html += '<span class="local-crush-switch-track"><span class="local-crush-switch-thumb"></span></span>';
+            html += '<span class="local-crush-switch-text">' + this.escapeHtml(i18n.toggleNoCompress) + '</span>';
+            html += '</label>';
+            html += '</span>';
             html += '</div>';
 
             html += '<table class="local-crush-details-table"><thead><tr>';
@@ -405,12 +415,13 @@
         },
 
         /**
-         * 单图开关：这张图片以后还生不生成缩略图
+         * 单图开关：这张图片以后还生不生成缩略图、还压不压缩
          */
-        handleNoThumbnailsSwitch: function(e) {
+        handleAttachmentSwitch: function(e) {
             var self = this;
             var $input = $(e.currentTarget);
             var attachmentId = parseInt($input.attr('data-attachment-id'), 10) || 0;
+            var operation = $input.attr('data-operation') || 'set-no-thumbnails';
             var disabled = $input.is(':checked');
 
             if (!attachmentId) {
@@ -426,7 +437,7 @@
                     action: 'local_crush_attachment_action',
                     nonce: this.nonce,
                     attachment_id: attachmentId,
-                    operation: 'set-no-thumbnails',
+                    operation: operation,
                     disabled: disabled ? 1 : 0
                 },
                 success: function(response) {
@@ -434,6 +445,11 @@
                         alert((response.data && response.data.message) || self.i18n.error);
                         // 没保存成功就把开关拨回原位，别让界面显示错的状态
                         $input.prop('checked', !disabled);
+                    }
+
+                    // 不再压缩会影响媒体库那一行的按钮，关弹窗时刷新一次让按钮跟着消失/恢复
+                    if (response.success && operation === 'set-no-compress') {
+                        self.detailsDirty = true;
                     }
 
                     $input.prop('disabled', false);
