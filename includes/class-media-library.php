@@ -303,7 +303,7 @@ class Local_Crush_Media_Library {
         // 引用已还原但残留尚未清理时，恢复按钮仍要可用，否则用户无法重试收尾。
         $can_restore = $has_backup || $processor->has_pending_restore( $attachment_id );
 
-        // 设为不再压缩后，这一行的单图操作按钮全部收起来，只留状态和详情入口。
+        // 设为不再压缩后隐藏压缩类按钮，恢复原图仍然可用。
         $compression_disabled = Local_Crush_Processor::compression_disabled_for_attachment( $attachment_id );
 
         if ( 'complete' === $state['status'] ) {
@@ -333,9 +333,7 @@ class Local_Crush_Media_Library {
                 <?php $this->render_storage_summary( $attachment_id ); ?>
             </div>
             <?php
-            if ( ! $compression_disabled ) {
-                $this->render_action_buttons( $attachment_id, 'compress', __( '压缩', 'local-crush' ), false );
-            }
+            $this->render_action_buttons( $attachment_id, $compression_disabled ? '' : 'compress', __( '压缩', 'local-crush' ), false );
             ?>
         </div>
         <?php
@@ -356,9 +354,7 @@ class Local_Crush_Media_Library {
                 <?php $this->render_storage_summary( $attachment_id ); ?>
             </div>
             <?php
-            if ( ! $compression_disabled ) {
-                $this->render_action_buttons( $attachment_id, 'compress', __( '重试', 'local-crush' ), $can_restore );
-            }
+            $this->render_action_buttons( $attachment_id, $compression_disabled ? '' : 'compress', __( '重试', 'local-crush' ), $can_restore );
             ?>
         </div>
         <?php
@@ -379,9 +375,7 @@ class Local_Crush_Media_Library {
                 <?php $this->render_storage_summary( $attachment_id ); ?>
             </div>
             <?php
-            if ( ! $compression_disabled ) {
-                $this->render_action_buttons( $attachment_id, 'compress', __( '重试', 'local-crush' ), $can_restore );
-            }
+            $this->render_action_buttons( $attachment_id, $compression_disabled ? '' : 'compress', __( '重试', 'local-crush' ), $can_restore );
             ?>
         </div>
         <?php
@@ -412,9 +406,7 @@ class Local_Crush_Media_Library {
                 <?php $this->render_storage_summary( $attachment_id ); ?>
             </div>
             <?php
-            if ( ! $compression_disabled ) {
-                $this->render_action_buttons( $attachment_id, 'compress', __( '继续压缩', 'local-crush' ), $can_restore );
-            }
+            $this->render_action_buttons( $attachment_id, $compression_disabled ? '' : 'compress', __( '继续压缩', 'local-crush' ), $can_restore );
             ?>
         </div>
         <?php
@@ -444,9 +436,7 @@ class Local_Crush_Media_Library {
                 <?php $this->render_storage_summary( $attachment_id ); ?>
             </div>
             <?php
-            if ( ! $compression_disabled ) {
-                $this->render_action_buttons( $attachment_id, '', '', $can_restore );
-            }
+            $this->render_action_buttons( $attachment_id, '', '', $can_restore );
             ?>
         </div>
         <?php
