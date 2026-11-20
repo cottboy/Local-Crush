@@ -709,6 +709,10 @@ msgstr ""
 msgid "只有 gif2webp 一条命令，不需要回写播放参数。参数与动画 GIF 转 WebP 分开设置。"
 msgstr ""
 
+#: includes/class-media-library.php:665
+msgid "只有未压缩的图片才能设为不再压缩"
+msgstr ""
+
 #: includes/class-settings.php:99
 msgid "只管图片里半透明部分的清晰程度：数越大透明边缘越保真、文件越大；数越小透明边缘越毛、文件越小。默认 100 表示透明部分完全无损，也是 cwebp 自己的默认值；没有半透明边缘的图调它没有意义。"
 msgstr ""
@@ -1689,10 +1693,6 @@ msgstr ""
 
 #: includes/class-media-library.php:677
 msgid "这张图片已恢复为可压缩"
-msgstr ""
-
-#: includes/class-media-library.php:665
-msgid "这张图片已经压缩，不能再设为不再压缩"
 msgstr ""
 
 #: includes/class-media-library.php:676 includes/class-processor.php:599

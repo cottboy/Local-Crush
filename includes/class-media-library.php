@@ -170,7 +170,7 @@ class Local_Crush_Media_Library {
                 user-select: none;
             }
 
-            /* 灰色不可用的开关：已压缩的图片不能再设为不再压缩 */
+            /* 灰色不可用的开关：只有未压缩状态才能设为不再压缩 */
             .local-crush-switch.is-disabled {
                 cursor: default;
             }
@@ -570,9 +570,9 @@ class Local_Crush_Media_Library {
         $details['thumbnails_disabled']    = Local_Crush_Thumbnail_Manager::thumbnails_disabled_for_attachment( $attachment_id );
         $details['compression_disabled']   = Local_Crush_Processor::compression_disabled_for_attachment( $attachment_id );
 
-        // 已经全部压好的图片不能再设“不再压缩”，详情页把这个开关画成灰色
+        // 只有“未压缩”状态能设“不再压缩”，其他状态详情页把这个开关画成灰色
         $state                             = local_crush()->processor->get_attachment_state( $attachment_id );
-        $details['compress_toggle_locked'] = 'complete' === $state['status'];
+        $details['compress_toggle_locked'] = 'pending' !== $state['status'];
 
         wp_send_json_success( $details );
     }
@@ -657,12 +657,12 @@ class Local_Crush_Media_Library {
             // phpcs:ignore WordPress.Security.NonceVerification.Missing -- 同上。
             $disabled = isset( $_POST['disabled'] ) && '1' === (string) absint( $_POST['disabled'] );
 
-            // 只允许在未压缩时打开；已经压好的图片服务端也要挡住，不能只靠界面变灰。
+            // 只有“未压缩”状态能打开；其他状态服务端也要挡住，不能只靠界面变灰。
             if ( $disabled ) {
                 $state = local_crush()->processor->get_attachment_state( $attachment_id );
 
-                if ( 'complete' === $state['status'] ) {
-                    wp_send_json_error( array( 'message' => __( '这张图片已经压缩，不能再设为不再压缩', 'local-crush' ) ) );
+                if ( 'pending' !== $state['status'] ) {
+                    wp_send_json_error( array( 'message' => __( '只有未压缩的图片才能设为不再压缩', 'local-crush' ) ) );
                 }
             }
 

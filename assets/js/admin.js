@@ -248,16 +248,16 @@
             html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-fallback" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.deleteFallback) + '</button>';
             html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-all" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnDeleteAllSizes) + '</button>';
             html += '<span class="local-crush-details-switches">';
-            html += '<label class="local-crush-switch">';
-            html += '<input type="checkbox" data-operation="set-no-thumbnails" data-attachment-id="' + attachmentId + '"' + (details.thumbnails_disabled ? ' checked' : '') + '>';
-            html += '<span class="local-crush-switch-track"><span class="local-crush-switch-thumb"></span></span>';
-            html += '<span class="local-crush-switch-text">' + this.escapeHtml(i18n.toggleNoThumbnails) + '</span>';
-            html += '</label>';
-            // 已全部压缩的图片不能再设“不再压缩”，开关画成灰色且不可点
+            // 只有“未压缩”状态能设“不再压缩”，其他状态开关画成灰色且不可点
             html += '<label class="local-crush-switch' + (compressLocked ? ' is-disabled' : '') + '">';
             html += '<input type="checkbox" data-operation="set-no-compress" data-attachment-id="' + attachmentId + '"' + (details.compression_disabled ? ' checked' : '') + (compressLocked ? ' disabled' : '') + '>';
             html += '<span class="local-crush-switch-track"><span class="local-crush-switch-thumb"></span></span>';
             html += '<span class="local-crush-switch-text">' + this.escapeHtml(i18n.toggleNoCompress) + '</span>';
+            html += '</label>';
+            html += '<label class="local-crush-switch">';
+            html += '<input type="checkbox" data-operation="set-no-thumbnails" data-attachment-id="' + attachmentId + '"' + (details.thumbnails_disabled ? ' checked' : '') + '>';
+            html += '<span class="local-crush-switch-track"><span class="local-crush-switch-thumb"></span></span>';
+            html += '<span class="local-crush-switch-text">' + this.escapeHtml(i18n.toggleNoThumbnails) + '</span>';
             html += '</label>';
             html += '</span>';
             html += '</div>';
