@@ -185,6 +185,36 @@ class Local_Crush_Processor {
     }
 
     /**
+     * 清除单个附件的全部压缩记录
+     *
+     * 只删记录，不动图片文件和原图备份；清除后附件会重新显示为未压缩。
+     *
+     * @param int $attachment_id 附件 ID
+     * @return bool|null 是否成功；锁被占用时返回 null
+     */
+    public function delete_compression_records( int $attachment_id ): ?bool {
+        $lock = $this->acquire_attachment_lock( $attachment_id );
+
+        if ( false === $lock ) {
+            return null;
+        }
+
+        $global_lock = $this->acquire_global_lock( false );
+
+        if ( false === $global_lock ) {
+            $this->release_attachment_lock( $lock );
+            return null;
+        }
+
+        try {
+            return local_crush()->database->delete_records_by_attachment( $attachment_id );
+        } finally {
+            $this->release_attachment_lock( $global_lock );
+            $this->release_attachment_lock( $lock );
+        }
+    }
+
+    /**
      * 暂停或恢复自动压缩
      *
      * @param bool $suppressed 是否暂停

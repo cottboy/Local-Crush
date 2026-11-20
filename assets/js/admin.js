@@ -231,7 +231,6 @@
             var i18n = this.i18n;
             var rows = details.items || [];
             var attachmentId = parseInt(details.attachment_id, 10) || 0;
-            var compressLocked = !!details.compress_toggle_locked;
             var html = '';
 
             html += '<div class="local-crush-details-modal" role="dialog" aria-modal="true">';
@@ -247,10 +246,10 @@
             html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-disabled" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnDeleteDisabled) + '</button>';
             html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-fallback" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.deleteFallback) + '</button>';
             html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-all" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnDeleteAllSizes) + '</button>';
+            html += '<button type="button" class="button button-small local-crush-details-op" data-operation="delete-records" data-attachment-id="' + attachmentId + '">' + this.escapeHtml(i18n.btnClearRecords) + '</button>';
             html += '<span class="local-crush-details-switches">';
-            // 只有“未压缩”状态能设“不再压缩”，其他状态开关画成灰色且不可点
-            html += '<label class="local-crush-switch' + (compressLocked ? ' is-disabled' : '') + '">';
-            html += '<input type="checkbox" data-operation="set-no-compress" data-attachment-id="' + attachmentId + '"' + (details.compression_disabled ? ' checked' : '') + (compressLocked ? ' disabled' : '') + '>';
+            html += '<label class="local-crush-switch">';
+            html += '<input type="checkbox" data-operation="set-no-compress" data-attachment-id="' + attachmentId + '"' + (details.compression_disabled ? ' checked' : '') + '>';
             html += '<span class="local-crush-switch-track"><span class="local-crush-switch-thumb"></span></span>';
             html += '<span class="local-crush-switch-text">' + this.escapeHtml(i18n.toggleNoCompress) + '</span>';
             html += '</label>';
@@ -409,6 +408,8 @@
                 confirmText = this.i18n.confirmDeleteAllSizes;
             } else if (operation === 'delete-fallback') {
                 confirmText = this.i18n.confirmDeleteFallback;
+            } else if (operation === 'delete-records') {
+                confirmText = this.i18n.confirmClearRecords;
             }
 
             this.runDetailsAction(attachmentId, { operation: operation }, confirmText, $btn);

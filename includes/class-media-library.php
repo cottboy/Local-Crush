@@ -170,19 +170,6 @@ class Local_Crush_Media_Library {
                 user-select: none;
             }
 
-            /* 灰色不可用的开关：只有未压缩状态才能设为不再压缩 */
-            .local-crush-switch.is-disabled {
-                cursor: default;
-            }
-
-            .local-crush-switch.is-disabled .local-crush-switch-track {
-                opacity: .45;
-            }
-
-            .local-crush-switch.is-disabled .local-crush-switch-text {
-                color: #a7aaad;
-            }
-
             /* 藏掉原生复选框；WordPress 会给禁用的复选框加 0.7 不透明度，
                保存开关时会把这个小输入框露成一条横线，所以要连禁用态一起藏 */
             .local-crush-switch input,
@@ -567,12 +554,8 @@ class Local_Crush_Media_Library {
         }
 
         // 详情页的开关状态：是否已设为不再生成缩略图、是否已设为不再压缩
-        $details['thumbnails_disabled']    = Local_Crush_Thumbnail_Manager::thumbnails_disabled_for_attachment( $attachment_id );
-        $details['compression_disabled']   = Local_Crush_Processor::compression_disabled_for_attachment( $attachment_id );
-
-        // 只有“未压缩”状态能设“不再压缩”，其他状态详情页把这个开关画成灰色
-        $state                             = local_crush()->processor->get_attachment_state( $attachment_id );
-        $details['compress_toggle_locked'] = 'pending' !== $state['status'];
+        $details['thumbnails_disabled']  = Local_Crush_Thumbnail_Manager::thumbnails_disabled_for_attachment( $attachment_id );
+        $details['compression_disabled'] = Local_Crush_Processor::compression_disabled_for_attachment( $attachment_id );
 
         wp_send_json_success( $details );
     }
@@ -656,15 +639,6 @@ class Local_Crush_Media_Library {
         if ( 'set-no-compress' === $operation ) {
             // phpcs:ignore WordPress.Security.NonceVerification.Missing -- 同上。
             $disabled = isset( $_POST['disabled'] ) && '1' === (string) absint( $_POST['disabled'] );
-
-            // 只有“未压缩”状态能打开；其他状态服务端也要挡住，不能只靠界面变灰。
-            if ( $disabled ) {
-                $state = local_crush()->processor->get_attachment_state( $attachment_id );
-
-                if ( 'pending' !== $state['status'] ) {
-                    wp_send_json_error( array( 'message' => __( '只有未压缩的图片才能设为不再压缩', 'local-crush' ) ) );
-                }
-            }
 
             if ( ! local_crush()->processor->set_compression_disabled( $attachment_id, $disabled ) ) {
                 wp_send_json_error( array( 'message' => __( '设置保存失败，请重试', 'local-crush' ) ) );
@@ -781,6 +755,23 @@ class Local_Crush_Media_Library {
                 }
 
                 wp_send_json_success( array( 'message' => __( '备份已删除', 'local-crush' ) ) );
+
+            case 'delete-records':
+                if ( empty( local_crush()->database->get_records_by_attachment( $attachment_id ) ) ) {
+                    wp_send_json_error( array( 'message' => __( '没有可清除的压缩记录', 'local-crush' ) ) );
+                }
+
+                $result = local_crush()->processor->delete_compression_records( $attachment_id );
+
+                if ( null === $result ) {
+                    wp_send_json_error( array( 'message' => __( '清除失败，这张图片正在被其他操作占用', 'local-crush' ) ) );
+                }
+
+                if ( ! $result ) {
+                    wp_send_json_error( array( 'message' => __( '清除失败，请重试', 'local-crush' ) ) );
+                }
+
+                wp_send_json_success( array( 'message' => __( '压缩记录已清除', 'local-crush' ) ) );
 
             case 'delete-scaled-main':
                 $result = $manager->delete_scaled_main( $attachment_id );
