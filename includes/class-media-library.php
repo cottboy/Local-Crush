@@ -757,11 +757,15 @@ class Local_Crush_Media_Library {
                 wp_send_json_success( array( 'message' => __( '备份已删除', 'local-crush' ) ) );
 
             case 'delete-records':
-                if ( empty( local_crush()->database->get_records_by_attachment( $attachment_id ) ) ) {
+                $has_records = ! empty( local_crush()->database->get_records_by_attachment( $attachment_id ) );
+                $has_backup  = ! empty( local_crush()->backup->get_backup_info( $attachment_id ) );
+                $has_restore = local_crush()->processor->has_pending_restore( $attachment_id );
+
+                if ( ! $has_records && ! $has_backup && ! $has_restore ) {
                     wp_send_json_error( array( 'message' => __( '没有可清除的压缩记录', 'local-crush' ) ) );
                 }
 
-                $result = local_crush()->processor->delete_compression_records( $attachment_id );
+                $result = local_crush()->processor->clear_compression_records( $attachment_id );
 
                 if ( null === $result ) {
                     wp_send_json_error( array( 'message' => __( '清除失败，这张图片正在被其他操作占用', 'local-crush' ) ) );
@@ -771,7 +775,7 @@ class Local_Crush_Media_Library {
                     wp_send_json_error( array( 'message' => __( '清除失败，请重试', 'local-crush' ) ) );
                 }
 
-                wp_send_json_success( array( 'message' => __( '压缩记录已清除', 'local-crush' ) ) );
+                wp_send_json_success( array( 'message' => __( '压缩记录和原图备份已清除', 'local-crush' ) ) );
 
             case 'delete-scaled-main':
                 $result = $manager->delete_scaled_main( $attachment_id );

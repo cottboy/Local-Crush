@@ -185,14 +185,15 @@ class Local_Crush_Processor {
     }
 
     /**
-     * 清除单个附件的全部压缩记录
+     * 清除单个附件的压缩记录与原图备份
      *
-     * 只删记录，不动图片文件和原图备份；清除后附件会重新显示为未压缩。
+     * 只清处理痕迹，不动图片文件（含旧格式回退图片）和格式转换映射；
+     * 清除后附件会重新显示为未压缩，并且无法再恢复原图。
      *
      * @param int $attachment_id 附件 ID
      * @return bool|null 是否成功；锁被占用时返回 null
      */
-    public function delete_compression_records( int $attachment_id ): ?bool {
+    public function clear_compression_records( int $attachment_id ): ?bool {
         $lock = $this->acquire_attachment_lock( $attachment_id );
 
         if ( false === $lock ) {
@@ -207,7 +208,22 @@ class Local_Crush_Processor {
         }
 
         try {
-            return local_crush()->database->delete_records_by_attachment( $attachment_id );
+            // 备份删不掉就保留压缩记录，让用户还能看到原来的状态并重试。
+            if ( ! local_crush()->backup->delete_backup( $attachment_id ) ) {
+                return false;
+            }
+
+            if ( ! local_crush()->database->delete_records_by_attachment( $attachment_id ) ) {
+                return false;
+            }
+
+            if ( ! $this->delete_restore_state( $attachment_id ) ) {
+                return false;
+            }
+
+            delete_post_meta( $attachment_id, self::PENDING_META_KEY );
+
+            return true;
         } finally {
             $this->release_attachment_lock( $global_lock );
             $this->release_attachment_lock( $lock );

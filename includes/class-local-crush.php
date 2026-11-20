@@ -282,7 +282,7 @@ class Local_Crush {
                     'confirmGenerateThumbnails' => __( '确定要为已勾选但缺失的尺寸补生成缩略图吗？开启了自动缩放且主图超过阈值时，还会生成或修正 -scaled 缩放图。这可能需要一些时间。', 'local-crush' ),
                     'confirmUnlockThumbnails' => __( '确定要关闭所有图片的“此图片不再生成缩略图”开关吗？只解除锁定，不会立刻生成缩略图，之后的补生成和重新生成会恢复正常。', 'local-crush' ),
                     'confirmUnlockCompress'   => __( '确定要关闭所有图片的“此图片不再压缩”开关吗？只解除锁定，不会立刻压缩图片，之后的压缩会恢复正常。', 'local-crush' ),
-                    'confirmClearRecords'     => __( '确定要清除这张图片的全部压缩记录吗？图片文件不会删除，但会重新显示为未压缩；之后的重试或批量压缩会重新处理这些文件。此操作不可撤销。', 'local-crush' ),
+                    'confirmClearRecords'     => __( '确定要清除这张图片的全部压缩记录和原图备份吗？图片文件（包括旧格式回退图片）不会删除，但会重新显示为未压缩，并且无法再恢复原图；之后的重试或批量压缩会重新处理这些文件。此操作不可撤销。', 'local-crush' ),
                     'confirmDeleteBackup'     => __( '确定要删除此图片的备份吗？删除后将无法恢复原图。', 'local-crush' ),
                     'confirmDeleteScaledMain' => __( '确定要删除这张图片的 -scaled 缩放图吗？主图会退回未缩放的原始大图，全站指向缩放图的链接会改到原图，此操作不可撤销。', 'local-crush' ),
                     'confirmDeleteAllBackups' => __( '确定要删除所有原图备份吗？删除后将无法恢复原图。', 'local-crush' ),
