@@ -71,11 +71,15 @@ class Local_Crush_Media_Library {
                多出来的宽度会留给左边的文件名栏，所以右边缘不会再留白 */
             .wp-list-table .column-local_crush {
                 width: 196px;
+                vertical-align: middle;
             }
 
             /* 左右两栏宽度写死，每行的文字左边缘、按钮左边缘才对齐在一条竖线上，
                表头"压缩"两个字也和内容对得上，两栏之间只留 4px。
                文字长过 130px 会自动换行，只会多占一行，不会撑破表格，所以换语言也不会散架 */
+            /* 整格内容跟着行中线垂直居中（配合上面的 vertical-align: middle）：
+               文字永远停在行中线；按钮 1 个时自己居中，2 个时一对一起居中。
+               开关"不再压缩"只会增减压缩按钮，文字位置不会跟着跳 */
             .wp-list-table .column-local_crush .local-crush-status {
                 display: grid;
                 grid-template-columns: 130px 62px;
