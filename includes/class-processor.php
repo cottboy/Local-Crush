@@ -110,6 +110,20 @@ class Local_Crush_Processor {
     private $queued_uploads = array();
 
     /**
+     * 当前 REST 请求是否为浏览器端上传的原图请求
+     *
+     * @var bool
+     */
+    private $client_side_upload = false;
+
+    /**
+     * 当前 REST 请求收尾的附件 ID（浏览器端上传的 finalize 请求）
+     *
+     * @var int
+     */
+    private $client_side_finalize = 0;
+
+    /**
      * 最近一次加锁失败的原因
      *
      * busy       = 锁被其他进程占用，稍后重试
@@ -129,6 +143,8 @@ class Local_Crush_Processor {
         add_action( 'shutdown', array( $this, 'process_queued_uploads' ), 1 );
         add_action( 'admin_init', array( $this, 'process_pending_uploads' ), 20 );
         add_action( self::PENDING_SWEEP_HOOK, array( $this, 'run_pending_sweep' ) );
+        add_filter( 'rest_pre_dispatch', array( $this, 'capture_client_side_upload' ), 10, 3 );
+        add_filter( 'rest_request_after_callbacks', array( $this, 'finish_client_side_upload' ), 10, 3 );
         add_action( self::BACKUP_PRUNE_HOOK, array( $this, 'prune_expired_backups' ) );
         add_action( self::CLEANUP_HOOK, array( $this, 'run_cleanup' ) );
     }
@@ -2501,6 +2517,109 @@ class Local_Crush_Processor {
     }
 
     /**
+     * 记录浏览器端上传的原图请求与收尾请求
+     *
+     * 浏览器端上传（generate_sub_sizes=false）由浏览器切缩略图，收尾请求之后
+     * 所有子尺寸才全部到位，自动压缩要等收尾成功后再执行。
+     *
+     * @param mixed           $result  预先返回的结果
+     * @param WP_REST_Server  $server  REST 服务器实例
+     * @param WP_REST_Request $request 当前请求
+     * @return mixed
+     */
+    public function capture_client_side_upload( $result, $server, $request ) {
+        if ( ! $request instanceof WP_REST_Request ) {
+            return $result;
+        }
+
+        $route = (string) $request->get_route();
+
+        if ( '/wp/v2/media' === $route
+            && 'POST' === $request->get_method()
+            && $request->has_param( 'generate_sub_sizes' )
+            && ! rest_sanitize_boolean( $request->get_param( 'generate_sub_sizes' ) ) ) {
+            $this->client_side_upload = true;
+        }
+
+        if ( preg_match( '#^/wp/v2/media/(\d+)/finalize$#', $route, $matches ) ) {
+            $this->client_side_finalize = absint( $matches[1] );
+        }
+
+        return $result;
+    }
+
+    /**
+     * 浏览器端上传收尾成功后补做尺寸清理与自动压缩
+     *
+     * @param mixed           $response REST 回调结果
+     * @param array           $handler  路由处理器
+     * @param WP_REST_Request $request  当前请求
+     * @return mixed
+     */
+    public function finish_client_side_upload( $response, $handler, $request ) {
+        $attachment_id              = $this->client_side_finalize;
+        $this->client_side_finalize = 0;
+
+        if ( ! $attachment_id || is_wp_error( $response ) ) {
+            return $response;
+        }
+
+        if ( ! $response instanceof WP_HTTP_Response || 200 !== $response->get_status() ) {
+            return $response;
+        }
+
+        if ( ! $this->is_valid_attachment( $attachment_id ) ) {
+            return $response;
+        }
+
+        // 浏览器按注册清单切了所有尺寸，未勾选的按设置删掉。
+        $this->remove_disabled_sizes( $attachment_id );
+
+        $settings = get_option( 'local_crush_general', array() );
+
+        if ( $this->auto_compress_suppressed
+            || empty( $settings['auto_compress'] )
+            || ! get_post_meta( $attachment_id, self::PENDING_META_KEY, true ) ) {
+            return $response;
+        }
+
+        $result = $this->compress_attachment( $attachment_id );
+
+        if ( empty( $result['busy'] ) ) {
+            delete_post_meta( $attachment_id, self::PENDING_META_KEY );
+        }
+
+        return $response;
+    }
+
+    /**
+     * 删除浏览器端上传切出来但未勾选的缩略图尺寸
+     *
+     * @param int $attachment_id 附件 ID
+     */
+    private function remove_disabled_sizes( int $attachment_id ): void {
+        $disabled = Local_Crush_Thumbnail_Manager::disabled_sizes();
+
+        if ( empty( $disabled ) ) {
+            return;
+        }
+
+        $metadata = wp_get_attachment_metadata( $attachment_id );
+
+        if ( ! is_array( $metadata ) || empty( $metadata['sizes'] ) || ! is_array( $metadata['sizes'] ) ) {
+            return;
+        }
+
+        $targets = array_values( array_intersect( array_keys( $metadata['sizes'] ), $disabled ) );
+
+        if ( empty( $targets ) ) {
+            return;
+        }
+
+        local_crush()->thumbnail_manager->delete_size_for_attachment( $attachment_id, $targets );
+    }
+
+    /**
      * 登记所有新建附件，覆盖不生成标准 metadata 的上传流程
      *
      * @param int $attachment_id 附件 ID
@@ -2516,6 +2635,12 @@ class Local_Crush_Processor {
         }
 
         update_post_meta( $attachment_id, self::PENDING_META_KEY, time() );
+
+        // 浏览器端上传时缩略图还没补传，不跟本次请求压，等收尾请求统一处理。
+        if ( $this->client_side_upload ) {
+            return;
+        }
+
         $this->queued_uploads[ $attachment_id ] = true;
     }
 
@@ -2685,6 +2810,11 @@ class Local_Crush_Processor {
         if ( $this->auto_compress_suppressed
             || empty( $settings['auto_compress'] )
             || ! $this->is_valid_attachment( absint( $attachment_id ) ) ) {
+            return $metadata;
+        }
+
+        // 浏览器端上传：子尺寸还在浏览器手里，等收尾请求再统一压缩。
+        if ( $this->client_side_upload ) {
             return $metadata;
         }
 
